@@ -1,7 +1,5 @@
 package com.sillygirl.client.data.repository
 
-package com.sillygirl.client.data.repository
-
 import com.sillygirl.client.data.api.ApiConfig
 import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.model.UserData
