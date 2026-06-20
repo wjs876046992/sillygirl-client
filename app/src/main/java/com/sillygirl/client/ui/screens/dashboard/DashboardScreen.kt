@@ -118,7 +118,42 @@ fun DashboardScreen(
                     )
                 }
 
-                // ⏱ Recently running tasks (optional)
+                // 💰 Fenyong summary
+                uiState.fenyongStats?.let { stats ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("分佣概览", style = MaterialTheme.typography.titleSmall)
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("¥${feyMoney(stats.totalRakeEstimate)}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary)
+                                    Text("预估佣金", style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("¥${feyMoney(stats.totalIrakeActual)}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary)
+                                    Text("实收佣金", style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("${feyInt(stats.orderNum)}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary)
+                                    Text("订单数", style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if (uiState.error != null) {
                     Card(
                         colors = CardDefaults.cardColors(
@@ -191,6 +226,9 @@ fun StatCard(
         }
     }
 }
+
+private fun feyMoney(v: Double) = if (v >= 10000) String.format("%.1f万", v / 10000) else String.format("%.2f", v)
+private fun feyInt(v: Int) = if (v >= 10000) String.format("%.1f万", v / 10000.0) else "$v"
 
 @Composable
 private fun QuickActionCard(

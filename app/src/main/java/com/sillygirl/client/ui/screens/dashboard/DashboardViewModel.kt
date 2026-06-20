@@ -6,6 +6,7 @@ import com.sillygirl.client.data.repository.AuthRepository
 import com.sillygirl.client.data.repository.PluginRepository
 import com.sillygirl.client.data.repository.MasterRepository
 import com.sillygirl.client.data.repository.TaskRepository
+import com.sillygirl.client.data.repository.FenyongRepository
 import com.sillygirl.client.data.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ data class DashboardUiState(
     val installedPlugins: Int = 0,
     val masterCount: Int = 0,
     val activeTaskCount: Int = 0,
+    val fenyongStats: FenyongStatData? = null,
 )
 
 class DashboardViewModel : ViewModel() {
@@ -27,6 +29,7 @@ class DashboardViewModel : ViewModel() {
     private val pluginRepo = PluginRepository()
     private val masterRepo = MasterRepository()
     private val taskRepo = TaskRepository()
+    private val fenyongRepo = FenyongRepository()
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
@@ -38,20 +41,17 @@ class DashboardViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val userResult = authRepo.getCurrentUserInfo()
                 var plugins = 0
                 var masters = 0
                 var tasks = 0
+                var fenyongStats: FenyongStatData? = null
 
-                val pluginsResult = pluginRepo.getInstalledPlugins()
-                pluginsResult.onSuccess { plugins = it.size }
+                pluginRepo.getInstalledPlugins().onSuccess { plugins = it.size }
+                masterRepo.getMasters().onSuccess { masters = it.size }
+                taskRepo.getTasks().onSuccess { tasks = it.count { t -> t.enable } }
+                fenyongRepo.getStats(init = true).onSuccess { fenyongStats = it.tongji }
 
-                val mastersResult = masterRepo.getMasters()
-                mastersResult.onSuccess { masters = it.size }
-
-                val tasksResult = taskRepo.getTasks()
-                tasksResult.onSuccess { tasks = it.count { t -> t.enable } }
-
+                val userResult = authRepo.getCurrentUserInfo()
                 userResult.fold(
                     onSuccess = { user ->
                         _uiState.value = _uiState.value.copy(
@@ -61,15 +61,17 @@ class DashboardViewModel : ViewModel() {
                             installedPlugins = plugins,
                             masterCount = masters,
                             activeTaskCount = tasks,
+                            fenyongStats = fenyongStats,
                         )
                     },
-                    onFailure = { e ->
+                    onFailure = {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             userName = "管理员",
                             installedPlugins = plugins,
                             masterCount = masters,
                             activeTaskCount = tasks,
+                            fenyongStats = fenyongStats,
                             error = "用户信息加载失败",
                         )
                     }
