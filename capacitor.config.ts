@@ -4,9 +4,10 @@ const config: CapacitorConfig = {
   appId: 'com.sillygirl.client',
   appName: 'SillyGirl客户端',
   webDir: 'dist',
-  bundledWebRuntime: false,
   server: {
-    cleartext: true
+    url: 'http://localhost:3000',
+    cleartext: true,
+    androidScheme: 'https'
   }
 };
 
