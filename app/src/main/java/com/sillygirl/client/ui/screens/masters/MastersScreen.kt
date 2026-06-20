@@ -79,7 +79,7 @@ fun MastersScreen(
         topBar = {
             TopAppBar(
                 title = { Text("管理员") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Default.ArrowBack, "返回") } },
                 actions = {
                     IconButton(onClick = { viewModel.load() }) { Icon(Icons.Filled.Refresh, "刷新") }
                     IconButton(onClick = { showAdd = true }) { Icon(Icons.Filled.Add, "添加") }

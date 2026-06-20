@@ -81,7 +81,7 @@ fun TasksScreen(
         topBar = {
             TopAppBar(
                 title = { Text("定时任务") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Default.ArrowBack, "返回") } },
                 actions = { IconButton(onClick = { viewModel.load() }) { Icon(Icons.Filled.Refresh, "刷新") } }
             )
         }
