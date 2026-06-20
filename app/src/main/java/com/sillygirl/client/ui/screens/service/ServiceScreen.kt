@@ -2,6 +2,7 @@ package com.sillygirl.client.ui.screens.service
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -13,7 +14,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ServiceScreen(onBack: () -> Unit) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text("服务") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "返回") } }) }
+        topBar = { TopAppBar(title = { Text("服务") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } }) }
     ) { p ->
         Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
