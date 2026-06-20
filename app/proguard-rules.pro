@@ -1,6 +1,6 @@
-# Add project specific ProGuard rules here.
+# Keep Gson model classes
 -keepattributes Signature
 -keepattributes *Annotation*
--keep class kotlinx.serialization.** { *; }
+-keep class com.sillygirl.client.data.model.** { *; }
 -dontwarn okhttp3.**
 -dontwarn retrofit2.**

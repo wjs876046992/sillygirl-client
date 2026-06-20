@@ -114,18 +114,18 @@ fun StatsSummaryCard(stats: com.sillygirl.client.data.model.FenyongStatData) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                StatItem("订单数", formatNumber(stats.order_num))
-                StatItem("用户数", formatNumber(stats.user_num))
-                StatItem("预估", "¥${formatMoney(stats.total_estimate)}")
+                StatItem("订单数", formatNumber(stats.orderNum))
+                StatItem("用户数", formatNumber(stats.userNum))
+                StatItem("预估", "¥${formatMoney(stats.totalEstimate)}")
             }
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                StatItem("实付", "¥${formatMoney(stats.total_actual)}")
-                StatItem("佣金预估", "¥${formatMoney(stats.total_rake_estimate)}")
-                StatItem("佣金实付", "¥${formatMoney(stats.total_irake_actual)}")
+                StatItem("实付", "¥${formatMoney(stats.totalActual)}")
+                StatItem("佣金预估", "¥${formatMoney(stats.totalRakeEstimate)}")
+                StatItem("佣金实付", "¥${formatMoney(stats.totalIrakeActual)}")
             }
         }
     }
@@ -146,7 +146,6 @@ fun OrderCard(order: com.sillygirl.client.data.model.FenyongOrder) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Placeholder for image
             Surface(
                 modifier = Modifier.size(48.dp),
                 shape = MaterialTheme.shapes.small,
@@ -162,7 +161,7 @@ fun OrderCard(order: com.sillygirl.client.data.model.FenyongOrder) {
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(order.name, style = MaterialTheme.typography.bodyMedium)
-                order.sku_name.takeIf { it.isNotBlank() }?.let {
+                order.skuName.takeIf { it.isNotBlank() }?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

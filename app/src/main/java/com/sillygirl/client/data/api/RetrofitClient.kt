@@ -1,13 +1,18 @@
 package com.sillygirl.client.data.api
 
+import com.google.gson.GsonBuilder
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
     var token: String? = null
+    val gson = GsonBuilder()
+        .setLenient()
+        .create()
 
     private val authInterceptor = Interceptor { chain ->
         val request = chain.request()
@@ -22,7 +27,7 @@ object RetrofitClient {
     }
 
     private val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        level = HttpLoggingInterceptor.Level.BASIC
     }
 
     private val okHttpClient: OkHttpClient
@@ -41,12 +46,7 @@ object RetrofitClient {
             return Retrofit.Builder()
                 .baseUrl(baseUrl.ensureTrailingSlash())
                 .client(okHttpClient)
-                .addConverterFactory(
-                    retrofit2.converter.kotlinx.serialization.asConverterFactory(
-                        json,
-                        okhttp3.MediaType.get("application/json")
-                    )
-                )
+                .addConverterFactory(GsonConverterFactory.create(gson))
                 .build()
                 .create(SillyGirlApi::class.java)
         }
