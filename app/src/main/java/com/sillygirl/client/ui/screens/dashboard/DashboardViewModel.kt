@@ -20,7 +20,7 @@ data class DashboardUiState(
     val installedPlugins: Int = 0,
     val masterCount: Int = 0,
     val activeTaskCount: Int = 0,
-    val fenyongStats: FenyongStatData? = null,
+    val fenyongDashboard: FenyongDashboardResponse? = null,
 )
 
 class DashboardViewModel : ViewModel() {
@@ -42,11 +42,11 @@ class DashboardViewModel : ViewModel() {
                 val userResult = authRepo.getCurrentUserInfo()
                 var masters = 0
                 var tasks = 0
-                var fenyongStats: FenyongStatData? = null
+                var fenyongDashboard: FenyongDashboardResponse? = null
 
                 try { masters = masterRepo.getMasters().getOrThrow().size } catch (_: Exception) {}
                 try { tasks = taskRepo.getTasks().getOrThrow().count { it.enable } } catch (_: Exception) {}
-                try { fenyongStats = fenyongRepo.getStats(init = true).getOrThrow().tongji } catch (_: Exception) {}
+                try { fenyongDashboard = fenyongRepo.getDashboard().getOrThrow() } catch (_: Exception) {}
 
                 userResult.fold(
                     onSuccess = { user ->
@@ -57,7 +57,7 @@ class DashboardViewModel : ViewModel() {
                             installedPlugins = user.plugins.size,
                             masterCount = masters,
                             activeTaskCount = tasks,
-                            fenyongStats = fenyongStats,
+                            fenyongDashboard = fenyongDashboard,
                         )
                     },
                     onFailure = { e ->
@@ -66,7 +66,7 @@ class DashboardViewModel : ViewModel() {
                             userName = "管理员",
                             masterCount = masters,
                             activeTaskCount = tasks,
-                            fenyongStats = fenyongStats,
+                            fenyongDashboard = fenyongDashboard,
                             error = e.message ?: "加载失败",
                         )
                     }

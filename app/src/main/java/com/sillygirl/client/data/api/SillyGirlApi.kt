@@ -41,16 +41,19 @@ interface SillyGirlApi {
     suspend fun uninstallPlugin(@Body body: Map<String, String>): ApiResponse<Any>
 
     // ===== Fenyong =====
-    @GET("api/fenyong")
-    suspend fun getFenyong(
-        @Query("init") init: Boolean? = null,
+    @GET("api/fenyong/dashboard")
+    suspend fun getFenyongDashboard(): FenyongDashboardResponse
+
+    @GET("api/fenyong/orders")
+    suspend fun getFenyongOrders(
+        @Query("tab") tab: String? = null,
+        @Query("site") site: String? = null,
         @Query("user") user: String? = null,
-        @Query("startTime") startTime: Long? = null,
-        @Query("endTime") endTime: Long? = null,
-        @Query("activeKey") activeKey: String? = null,
-        @Query("current") current: Int? = null,
-        @Query("pageSize") pageSize: Int? = null,
-    ): FenyongStatResponse
+        @Query("startTime") startTime: String? = null,
+        @Query("endTime") endTime: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("pageSize") pageSize: Int = 20,
+    ): FenyongOrderResponse
 
     // ===== Masters =====
     @GET("api/master/list")

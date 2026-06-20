@@ -71,7 +71,7 @@ fun DashboardScreen(
                 }
 
                 // Fenyong summary
-                uiState.fenyongStats?.let { stats ->
+                uiState.fenyongDashboard?.let { dash ->
                     Card(
                         modifier = Modifier.fillMaxWidth().clickable(onClick = onNavigateToFenyong),
                     ) {
@@ -85,9 +85,9 @@ fun DashboardScreen(
                             }
                             Spacer(Modifier.height(12.dp))
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                FenyongStatItem("预估佣金", "¥${feyMoney(stats.totalRakeEstimate)}")
-                                FenyongStatItem("实收佣金", "¥${feyMoney(stats.totalIrakeActual)}")
-                                FenyongStatItem("订单数", feyInt(stats.orderNum))
+                                FenyongStatItem("今日收入", "¥${feyMoney(dash.today.actual)}")
+                                FenyongStatItem("已结算", "¥${feyMoney(dash.totalSettled)}")
+                                FenyongStatItem("总订单", feyInt(dash.totalOrders))
                             }
                         }
                     }

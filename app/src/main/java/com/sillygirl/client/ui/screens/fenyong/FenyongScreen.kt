@@ -94,9 +94,9 @@ fun FenyongScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         // Stats summary
-                        uiState.stats?.let { stats ->
+                        uiState.dashboard?.let { dash ->
                             item {
-                                StatsSummaryCard(stats)
+                                StatsSummaryCard(dash)
                             }
                         }
 
@@ -112,7 +112,7 @@ fun FenyongScreen(
 }
 
 @Composable
-fun StatsSummaryCard(stats: com.sillygirl.client.data.model.FenyongStatData) {
+fun StatsSummaryCard(dashboard: com.sillygirl.client.data.model.FenyongDashboardResponse) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("数据统计", style = MaterialTheme.typography.titleMedium)
@@ -121,18 +121,18 @@ fun StatsSummaryCard(stats: com.sillygirl.client.data.model.FenyongStatData) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                StatItem("订单数", formatNumber(stats.orderNum))
-                StatItem("用户数", formatNumber(stats.userNum))
-                StatItem("预估", "¥${formatMoney(stats.totalEstimate)}")
+                StatItem("今日", "¥${formatMoney(dashboard.today.actual)}")
+                StatItem("昨日", "¥${formatMoney(dashboard.yesterday.actual)}")
+                StatItem("7天", "¥${formatMoney(dashboard.last7days.actual)}")
             }
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                StatItem("实付", "¥${formatMoney(stats.totalActual)}")
-                StatItem("佣金预估", "¥${formatMoney(stats.totalRakeEstimate)}")
-                StatItem("佣金实付", "¥${formatMoney(stats.totalIrakeActual)}")
+                StatItem("总订单", dashboard.totalOrders.toString())
+                StatItem("已结算", "¥${formatMoney(dashboard.totalSettled)}")
+                StatItem("未结算", "¥${formatMoney(dashboard.totalUnsettled)}")
             }
         }
     }

@@ -55,29 +55,35 @@ data class PluginInfo(
     val debug: Boolean = false,
 )
 
-data class FenyongStatResponse(
+data class FenyongDashboardResponse(
     val success: Boolean = false,
-    val tongji: FenyongStatData? = null,
-    val tabs: List<FenyongTab> = emptyList(),
+    val today: FenyongPeriodStats = FenyongPeriodStats(),
+    val yesterday: FenyongPeriodStats = FenyongPeriodStats(),
+    val last7days: FenyongPeriodStats = FenyongPeriodStats(),
+    val lastMonth: FenyongPeriodStats = FenyongPeriodStats(),
+    val platforms: Map<String, FenyongPlatformStats> = emptyMap(),
+    val totalSettled: Double = 0.0,
+    val totalUnsettled: Double = 0.0,
+    val totalOrders: Int = 0,
+)
+
+data class FenyongPeriodStats(
+    val orders: Int = 0,
+    val estimate: Double = 0.0,
+    val actual: Double = 0.0,
+)
+
+data class FenyongPlatformStats(
+    val orders: Int = 0,
+    val estimate: Double = 0.0,
+    val actual: Double = 0.0,
+)
+
+data class FenyongOrderResponse(
+    val success: Boolean = false,
     val data: List<FenyongOrder> = emptyList(),
+    val page: Int = 1,
     val total: Int = 0,
-)
-
-data class FenyongStatData(
-    @SerializedName("order_num") val orderNum: Int = 0,
-    @SerializedName("user_num") val userNum: Int = 0,
-    @SerializedName("total_actual") val totalActual: Double = 0.0,
-    @SerializedName("total_estimate") val totalEstimate: Double = 0.0,
-    @SerializedName("total_rake_actual") val totalRakeActual: Double = 0.0,
-    @SerializedName("total_rake_estimate") val totalRakeEstimate: Double = 0.0,
-    @SerializedName("total_irake_actual") val totalIrakeActual: Double = 0.0,
-    @SerializedName("total_irake_estimate") val totalIrakeEstimate: Double = 0.0,
-)
-
-data class FenyongTab(
-    val key: String = "",
-    val title: String = "",
-    val value: String = "",
 )
 
 data class FenyongOrder(
@@ -85,6 +91,16 @@ data class FenyongOrder(
     val image: String = "",
     @SerializedName("sku_name") val skuName: String = "",
     val status: String = "",
+    @SerializedName("created_time") val createdTime: Long = 0,
+    val site: String = "",
+    @SerializedName("sku_id") val skuId: String = "",
+    @SerializedName("order_id") val orderId: String = "",
+)
+
+data class FenyongTab(
+    val key: String = "",
+    val title: String = "",
+    val value: String = "",
 )
 
 data class MastersResponse(
