@@ -12,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -22,6 +21,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.*
+
+private const val PLACEHOLDER_SIZE = 72
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -165,7 +166,7 @@ fun OrderCard(order: com.sillygirl.client.data.model.FenyongOrder) {
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("📦", fontSize = androidx.compose.ui.text.style.TextStyle.Default.fontSize * 1.5)
+                        Text("📦", fontSize = 24.sp)
                     }
                 }
 
