@@ -19,6 +19,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun DashboardScreen(
     onNavigateToFenyong: () -> Unit = {},
+    onNavigateToMyPlugins: () -> Unit = {},
+    onNavigateToPluginMarket: () -> Unit = {},
+    onNavigateToMasters: () -> Unit = {},
+    onNavigateToTasks: () -> Unit = {},
+    onNavigateToService: () -> Unit = {},
+    onNavigateToStorage: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel(),
 ) {
@@ -29,157 +35,70 @@ fun DashboardScreen(
             TopAppBar(
                 title = { Text("SillyGirl") },
                 actions = {
-                    IconButton(onClick = { viewModel.loadDashboard() }) {
-                        Icon(Icons.Filled.Refresh, "刷新")
-                    }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Filled.Settings, "设置")
-                    }
+                    IconButton(onClick = { viewModel.loadDashboard() }) { Icon(Icons.Filled.Refresh, "刷新") }
+                    IconButton(onClick = onNavigateToSettings) { Icon(Icons.Filled.Settings, "设置") }
                 }
             )
         }
     ) { padding ->
         if (uiState.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator() }
-        } else if (uiState.error != null && uiState.userName.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = { viewModel.loadDashboard() }) { Text("重试") }
-                }
-            }
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // 👤 Welcome card
                 WelcomeCard(name = uiState.userName)
 
-                // 📊 Stats grid (3 columns)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    StatCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Filled.Extension,
-                        label = "已安装插件",
-                        value = "${uiState.installedPlugins}",
-                    )
-                    StatCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Filled.People,
-                        label = "管理员",
-                        value = "${uiState.masterCount}",
-                    )
-                    StatCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Filled.Schedule,
-                        label = "运行中任务",
-                        value = "${uiState.activeTaskCount}",
-                    )
+                // Stats row — clickable
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatCard(Modifier.weight(1f), Icons.Filled.Extension, "已安装插件", "${uiState.installedPlugins}", onClick = onNavigateToMyPlugins)
+                    StatCard(Modifier.weight(1f), Icons.Filled.People, "管理员", "${uiState.masterCount}", onClick = onNavigateToMasters)
+                    StatCard(Modifier.weight(1f), Icons.Filled.Schedule, "运行中任务", "${uiState.activeTaskCount}", onClick = onNavigateToTasks)
                 }
 
-                // 🔗 Quick actions
-                Text(
-                    "快捷入口",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    QuickActionCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Filled.Paid,
-                        label = "分佣",
-                        onClick = onNavigateToFenyong,
-                    )
-                    QuickActionCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Filled.ManageAccounts,
-                        label = "管理员",
-                        onClick = { /* TODO: navigate to masters */ },
-                    )
-                    QuickActionCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Filled.Task,
-                        label = "定时任务",
-                        onClick = { /* TODO: navigate to tasks */ },
-                    )
+                // Quick actions
+                Text("快捷入口", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    QuickActionCard(Modifier.weight(1f), Icons.Filled.Paid, "分佣", onClick = onNavigateToFenyong)
+                    QuickActionCard(Modifier.weight(1f), Icons.Filled.Extension, "插件市场", onClick = onNavigateToPluginMarket)
+                    QuickActionCard(Modifier.weight(1f), Icons.Filled.Storage, "存储", onClick = onNavigateToStorage)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    QuickActionCard(Modifier.weight(1f), Icons.Filled.Dns, "服务", onClick = onNavigateToService)
+                    QuickActionCard(Modifier.weight(1f), Icons.Filled.ManageAccounts, "管理员", onClick = onNavigateToMasters)
+                    QuickActionCard(Modifier.weight(1f), Icons.Filled.Schedule, "定时任务", onClick = onNavigateToTasks)
                 }
 
-                // 💰 Fenyong summary
+                // Fenyong summary
                 uiState.fenyongStats?.let { stats ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("分佣概览", style = MaterialTheme.typography.titleSmall)
-                            Spacer(Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("¥${feyMoney(stats.totalRakeEstimate)}",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.primary)
-                                    Text("预估佣金", style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("¥${feyMoney(stats.totalIrakeActual)}",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.primary)
-                                    Text("实收佣金", style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${feyInt(stats.orderNum)}",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.primary)
-                                    Text("订单数", style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable(onClick = onNavigateToFenyong),
+                    ) {
+                        Column(Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.Paid, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(6.dp))
+                                Text("分佣概览", style = MaterialTheme.typography.titleSmall)
+                                Spacer(Modifier.weight(1f))
+                                Text("查看详情 >", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                FenyongStatItem("预估佣金", "¥${feyMoney(stats.totalRakeEstimate)}")
+                                FenyongStatItem("实收佣金", "¥${feyMoney(stats.totalIrakeActual)}")
+                                FenyongStatItem("订单数", feyInt(stats.orderNum))
                             }
                         }
                     }
                 }
 
                 if (uiState.error != null) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                        ),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Filled.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                            )
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Info, null, tint = MaterialTheme.colorScheme.error)
                             Spacer(Modifier.width(8.dp))
-                            Text(
-                                uiState.error!!,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
+                            Text(uiState.error!!, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -192,38 +111,19 @@ fun DashboardScreen(
 
 @Composable
 private fun WelcomeCard(name: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-        ),
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+        Column(Modifier.padding(20.dp)) {
             Text("欢迎回来 👋", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
-            Text(
-                name,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
+            Text(name, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
         }
     }
 }
 
 @Composable
-fun StatCard(
-    modifier: Modifier = Modifier,
-    icon: ImageVector,
-    label: String,
-    value: String,
-) {
-    Card(modifier = modifier) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+fun StatCard(modifier: Modifier, icon: ImageVector, label: String, value: String, onClick: () -> Unit = {}) {
+    Card(modifier = modifier.clickable(onClick = onClick)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
             Spacer(Modifier.height(6.dp))
             Text(value, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
@@ -232,28 +132,24 @@ fun StatCard(
     }
 }
 
-private fun feyMoney(v: Double) = if (v >= 10000) String.format("%.1f万", v / 10000) else String.format("%.2f", v)
-private fun feyInt(v: Int) = if (v >= 10000) String.format("%.1f万", v / 10000.0) else "$v"
-
 @Composable
-private fun QuickActionCard(
-    modifier: Modifier = Modifier,
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(28.dp))
-            Spacer(Modifier.height(8.dp))
-            Text(label, style = MaterialTheme.typography.bodyMedium)
+private fun QuickActionCard(modifier: Modifier, icon: ImageVector, label: String, onClick: () -> Unit) {
+    Card(modifier = modifier.clickable(onClick = onClick)) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.height(6.dp))
+            Text(label, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
+
+@Composable
+private fun FenyongStatItem(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+private fun feyMoney(v: Double) = if (v >= 10000) String.format("%.1f万", v / 10000) else String.format("%.2f", v)
+private fun feyInt(v: Int) = if (v >= 10000) String.format("%.1f万", v / 10000.0) else "$v"
