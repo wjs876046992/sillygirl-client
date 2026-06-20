@@ -44,8 +44,10 @@ jobs:
         run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: softprops/action-gh-release@v2
         with:
-          name: sillygirl-client-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 7
+          tag_name: apk-debug-${{ github.sha }}
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
