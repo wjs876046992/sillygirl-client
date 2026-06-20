@@ -25,7 +25,7 @@ fun MyPluginsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("我的插件") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Default.ArrowBack, "返回") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "返回") } },
                 actions = { IconButton(onClick = { viewModel.load() }) { Icon(Icons.Filled.Refresh, "刷新") } }
             )
         }
@@ -63,7 +63,7 @@ fun PluginMarketScreen(
         topBar = {
             TopAppBar(
                 title = { Text("插件市场") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Default.ArrowBack, "返回") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "返回") } },
                 actions = { IconButton(onClick = { viewModel.load() }) { Icon(Icons.Filled.Refresh, "刷新") } }
             )
         }

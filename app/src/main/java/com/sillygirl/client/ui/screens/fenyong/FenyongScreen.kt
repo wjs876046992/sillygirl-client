@@ -31,7 +31,7 @@ fun FenyongScreen(
                 title = { Text("分佣") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Default.ArrowBack, "返回")
+                        Icon(Icons.Filled.ArrowBack, "返回")
                     }
                 },
                 actions = {

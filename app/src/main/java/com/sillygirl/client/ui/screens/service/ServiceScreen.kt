@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ServiceScreen(onBack: () -> Unit) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text("服务") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Default.ArrowBack, "返回") } }) }
+        topBar = { TopAppBar(title = { Text("服务") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "返回") } }) }
     ) { p ->
         Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
