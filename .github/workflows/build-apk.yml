@@ -33,7 +33,8 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Add & sync Android platform
+      - name: Sync Android platform
+        if: hashFiles('android/') == ''
         run: |
           npx cap add android
           npx cap sync
