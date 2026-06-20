@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.log
+.env
+.env.local
+
+# Capacitor Androidndroid/app/build/
+android/app/.gradle/
+android/local.properties
+android/!gradle/wrapper/gradle-wrapper.jar
+android/.idea/
+android/.gitignore
+android/gradlew
+android/gradlew.bat
