@@ -13,6 +13,8 @@ import androidx.compose.ui.unit.dp
 import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.model.MasterInfo
 import com.sillygirl.client.data.repository.MasterRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -137,7 +139,7 @@ private fun AddMasterDialog(onDismiss: () -> Unit, onAdded: () -> Unit) {
             TextButton(onClick = {
                 if (platform.isBlank() || number.isBlank()) return@TextButton
                 loading = true
-                kotlinx.coroutines.MainScope().launch {
+                CoroutineScope(Dispatchers.Main).launch {
                     try {
                         RetrofitClient.api.addMaster(mapOf("platform" to platform, "number" to number))
                         onAdded()
