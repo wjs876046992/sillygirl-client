@@ -85,7 +85,7 @@ interface SillyGirlApi {
 
     @POST("api/tasks/setEnable")
     @Headers("Content-Type: application/json")
-    suspend fun setTaskEnable(@Body body: Map<String, Boolean>): ApiResponse<Any>
+    suspend fun setTaskEnable(@Body body: Map<String, Any>): ApiResponse<Any>
 
     @POST("api/tasks/run")
     @Headers("Content-Type: application/json")

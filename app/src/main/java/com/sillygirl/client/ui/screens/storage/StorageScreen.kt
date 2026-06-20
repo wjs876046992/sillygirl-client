@@ -86,7 +86,7 @@ fun StorageScreen(
         topBar = {
             TopAppBar(
                 title = { Text("存储") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "返回") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
                 actions = { IconButton(onClick = { viewModel.loadKeys() }) { Icon(Icons.Filled.Refresh, "刷新") } }
             )
         }
