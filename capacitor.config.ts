@@ -5,6 +5,7 @@ const config: CapacitorConfig = {
   appName: 'SillyGirl客户端',
   webDir: 'dist',
   server: {
+    hostname: 'localhost',
     androidScheme: 'http'
   }
 };
