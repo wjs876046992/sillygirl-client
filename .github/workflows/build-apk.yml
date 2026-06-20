@@ -30,17 +30,14 @@ jobs:
       - name: Build web
         run: npm run build
 
+      - name: Sync Android assets
+        run: npx cap copy android
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-
-      - name: Sync Android platform
-        if: hashFiles('android/') == ''
-        run: |
-          npx cap add android
-          npx cap sync
 
       - name: Build APK (debug)
         working-directory: android
