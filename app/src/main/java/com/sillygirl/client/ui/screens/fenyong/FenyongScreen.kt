@@ -20,6 +20,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FenyongScreen(
+    onBack: () -> Unit = {},
     viewModel: FenyongViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -28,6 +29,11 @@ fun FenyongScreen(
         topBar = {
             TopAppBar(
                 title = { Text("分佣") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Filled.ArrowBack, "返回")
+                    }
+                },
                 actions = {
                     IconButton(onClick = { viewModel.loadData(uiState.activeTab) }) {
                         Icon(Icons.Filled.Refresh, "刷新")

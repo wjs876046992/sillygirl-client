@@ -18,6 +18,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
+    onNavigateToFenyong: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -29,6 +31,9 @@ fun DashboardScreen(
                 actions = {
                     IconButton(onClick = { viewModel.loadDashboard() }) {
                         Icon(Icons.Filled.Refresh, "刷新")
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Filled.Settings, "设置")
                     }
                 }
             )
@@ -102,19 +107,19 @@ fun DashboardScreen(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Filled.Paid,
                         label = "分佣",
-                        onClick = { /* navigate to fenyong */ },
+                        onClick = onNavigateToFenyong,
                     )
                     QuickActionCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Filled.ManageAccounts,
                         label = "管理员",
-                        onClick = { /* navigate to masters */ },
+                        onClick = { /* TODO: navigate to masters */ },
                     )
                     QuickActionCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Filled.Task,
                         label = "定时任务",
-                        onClick = { /* navigate to tasks */ },
+                        onClick = { /* TODO: navigate to tasks */ },
                     )
                 }
 
