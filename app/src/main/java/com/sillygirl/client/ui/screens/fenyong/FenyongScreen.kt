@@ -21,12 +21,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.sillygirl.client.data.model.FenyongOrder
+import com.sillygirl.client.data.model.FenyongTab
+import com.sillygirl.client.data.model.FenyongTimeRange
+import com.sillygirl.client.data.model.FenyongTongjiData
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -306,7 +311,6 @@ fun StatisticsCard(tongji: FenyongTongjiData) {
 fun GridStatItem(label: String, value: String) {
     Column(
         modifier = Modifier
-            .weight(1f)
             .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -321,7 +325,7 @@ fun GridStatItem(label: String, value: String) {
             label,
             style = MaterialTheme.typography.labelSmall,
             color = GrayTextColor,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            textAlign = TextAlign.Center,
             maxLines = 2,
         )
     }

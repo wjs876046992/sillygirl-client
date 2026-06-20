@@ -2,7 +2,11 @@ package com.sillygirl.client.ui.screens.fenyong
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sillygirl.client.data.model.*
+import com.sillygirl.client.data.model.FenyongDashboardResponse
+import com.sillygirl.client.data.model.FenyongOrder
+import com.sillygirl.client.data.model.FenyongTab
+import com.sillygirl.client.data.model.FenyongTimeRange
+import com.sillygirl.client.data.model.FenyongTongjiData
 import com.sillygirl.client.data.repository.FenyongRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -58,11 +62,11 @@ class FenyongViewModel : ViewModel() {
     fun loadData(page: Int = 1, refresh: Boolean = false) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            if (refresh) {
-                _uiState.update { it.copy(isRefreshing = true, error = null) }
-            } else {
-                _uiState.update { it.copy(isLoading = true, error = null) }
-            }
+            _uiState.value = _uiState.value.copy(
+                isLoading = !refresh,
+                isRefreshing = refresh,
+                error = null,
+            )
 
             val s = _uiState.value
             val startTs = s.startTimestamp
@@ -84,19 +88,17 @@ class FenyongViewModel : ViewModel() {
             val dashResult = dashboardDeferred.await()
             val ordersResult = ordersDeferred.await()
 
-            _uiState.update {
-                copy(
-                    isLoading = false,
-                    isRefreshing = false,
-                    dashboard = dashResult.getOrNull(),
-                    orders = ordersResult.getOrNull()?.data ?: emptyList(),
-                    tabs = ordersResult.getOrNull()?.tabs ?: emptyList(),
-                    page = ordersResult.getOrNull()?.page ?: 1,
-                    total = ordersResult.getOrNull()?.total ?: 0,
-                    hasMore = (page) * 20 < (ordersResult.getOrNull()?.total ?: 0),
-                    error = ordersResult.exceptionOrNull()?.message,
-                )
-            }
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                isRefreshing = false,
+                dashboard = dashResult.getOrNull(),
+                orders = ordersResult.getOrNull()?.data ?: emptyList(),
+                tabs = ordersResult.getOrNull()?.tabs ?: emptyList(),
+                page = ordersResult.getOrNull()?.page ?: 1,
+                total = ordersResult.getOrNull()?.total ?: 0,
+                hasMore = (page) * 20 < (ordersResult.getOrNull()?.total ?: 0),
+                error = ordersResult.exceptionOrNull()?.message,
+            )
         }
     }
 
@@ -113,7 +115,7 @@ class FenyongViewModel : ViewModel() {
                 site = if (s.activeSite == "all") null else s.activeSite,
                 user = if (s.activeUser == "#") null else s.activeUser,
             ).onSuccess { tongji ->
-                _uiState.update { it.copy(tongji = tongji) }
+                _uiState.value = _uiState.value.copy(tongji = tongji)
             }
         }
     }
@@ -121,19 +123,19 @@ class FenyongViewModel : ViewModel() {
     // ===== 筛选操作 =====
 
     fun changeTab(tab: String) {
-        _uiState.update { it.copy(activeTab = tab, page = 1) }
+        _uiState.value = _uiState.value.copy(activeTab = tab, page = 1)
         loadData(1, refresh = true)
         loadTongji()
     }
 
     fun changeSite(site: String) {
-        _uiState.update { it.copy(activeSite = site, activeUser = "#", page = 1) }
+        _uiState.value = _uiState.value.copy(activeSite = site, activeUser = "#", page = 1)
         loadData(1, refresh = true)
         loadTongji()
     }
 
     fun changeUser(user: String) {
-        _uiState.update { it.copy(activeUser = user, page = 1) }
+        _uiState.value = _uiState.value.copy(activeUser = user, page = 1)
         loadData(1, refresh = true)
         loadTongji()
     }
@@ -192,14 +194,12 @@ class FenyongViewModel : ViewModel() {
             else -> { startTs = null; endTs = null }
         }
 
-        _uiState.update {
-            it.copy(
-                timeRange = range,
-                startTimestamp = startTs,
-                endTimestamp = endTs,
-                page = 1,
-            )
-        }
+        _uiState.value = _uiState.value.copy(
+            timeRange = range,
+            startTimestamp = startTs,
+            endTimestamp = endTs,
+            page = 1,
+        )
         loadData(1, refresh = true)
         loadTongji()
     }
