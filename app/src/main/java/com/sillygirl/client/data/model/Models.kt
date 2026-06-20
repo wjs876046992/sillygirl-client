@@ -95,6 +95,9 @@ data class FenyongOrder(
     val site: String = "",
     @SerializedName("sku_id") val skuId: String = "",
     @SerializedName("order_id") val orderId: String = "",
+    @SerializedName("paid_amount") val paidAmount: Double = 0.0,
+    @SerializedName("estimate_commission") val estimateCommission: Double = 0.0,
+    @SerializedName("actual_commission") val actualCommission: Double = 0.0,
 )
 
 data class FenyongTab(

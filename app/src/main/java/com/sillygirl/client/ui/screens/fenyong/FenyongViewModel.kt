@@ -15,8 +15,6 @@ data class FenyongUiState(
     val error: String? = null,
     val dashboard: FenyongDashboardResponse? = null,
     val orders: List<FenyongOrder> = emptyList(),
-    val tabs: List<FenyongTab> = emptyList(),
-    val activeTab: String = "all",
 )
 
 class FenyongViewModel : ViewModel() {
@@ -28,27 +26,21 @@ class FenyongViewModel : ViewModel() {
         loadData()
     }
 
-    fun loadData(activeKey: String = "all") {
+    fun loadData() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null, activeTab = activeKey)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             val dashboardDeferred = async { repository.getDashboard() }
-            val ordersDeferred = async {
-                repository.getOrders(
-                    tab = if (activeKey == "all") null else activeKey,
-                )
-            }
+            val ordersDeferred = async { repository.getOrders() }
 
             dashboardDeferred.await().fold(
                 onSuccess = { dashboard ->
                     ordersDeferred.await().fold(
                         onSuccess = { response ->
-                            val tabs = buildTabs(response.total)
                             _uiState.value = _uiState.value.copy(
                                 isLoading = false,
                                 dashboard = dashboard,
                                 orders = response.data,
-                                tabs = tabs,
                             )
                         },
                         onFailure = { e ->
@@ -68,20 +60,5 @@ class FenyongViewModel : ViewModel() {
                 }
             )
         }
-    }
-
-    fun switchTab(tabKey: String) {
-        loadData(activeKey = tabKey)
-    }
-
-    private fun buildTabs(totalOrders: Int): List<FenyongTab> {
-        return listOf(
-            FenyongTab("all", "全部", totalOrders.toString()),
-            FenyongTab("tab1", "待结算", ""),
-            FenyongTab("tab3", "未绑定", ""),
-            FenyongTab("tab4", "未到账", ""),
-            FenyongTab("tab5", "已到账", ""),
-            FenyongTab("tab6", "已过期", ""),
-        )
     }
 }
