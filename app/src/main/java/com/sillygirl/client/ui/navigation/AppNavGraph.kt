@@ -1,10 +1,13 @@
 package com.sillygirl.client.ui.navigation
 
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.sillygirl.client.LocalServerConfig
+import com.sillygirl.client.data.api.RetrofitClient
+import com.sillygirl.client.data.repository.ServerConfig
 import com.sillygirl.client.ui.screens.dashboard.DashboardScreen
 import com.sillygirl.client.ui.screens.fenyong.FenyongScreen
 import com.sillygirl.client.ui.screens.login.LoginScreen
@@ -15,8 +18,12 @@ import com.sillygirl.client.ui.screens.masters.MastersScreen
 import com.sillygirl.client.ui.screens.tasks.TasksScreen
 import com.sillygirl.client.ui.screens.service.ServiceScreen
 import com.sillygirl.client.ui.screens.storage.StorageScreen
+import com.sillygirl.client.ui.screens.serverlist.ServerListScreen
+import com.sillygirl.client.ui.screens.serverlist.ServerListViewModel
+import com.sillygirl.client.ui.screens.serverlist.ServerListViewModelFactory
 
 object Routes {
+    const val SERVER_LIST = "server_list"
     const val LOGIN = "login"
     const val DASHBOARD = "dashboard"
     const val FENYONG = "fenyong"
@@ -32,14 +39,50 @@ object Routes {
 @Composable
 fun AppNavGraph() {
     val navController = rememberNavController()
-    var isLoggedIn by remember { mutableStateOf(false) }
+    val serverConfig = LocalServerConfig.current
 
-    val startRoute = if (isLoggedIn) Routes.DASHBOARD else Routes.LOGIN
+    // 检查是否已有选中的服务器
+    val defaultServer = serverConfig.getDefaultServer()
+    var hasServer by remember { mutableStateOf(defaultServer != null) }
+    var isLoggedIn by remember { mutableStateOf(RetrofitClient.token != null && hasServer) }
+
+    // 当服务器状态变化时更新
+    LaunchedEffect(defaultServer, RetrofitClient.token) {
+        hasServer = defaultServer != null
+        isLoggedIn = RetrofitClient.token != null && hasServer
+    }
+
+    val startRoute = when {
+        !hasServer -> Routes.SERVER_LIST
+        !isLoggedIn -> Routes.LOGIN
+        else -> Routes.DASHBOARD
+    }
 
     NavHost(
         navController = navController,
         startDestination = startRoute,
     ) {
+        // ---- Server Selection ----
+        composable(Routes.SERVER_LIST) {
+            val vm = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = ServerListViewModelFactory(LocalServerConfig.current)
+            )
+            ServerListScreen(
+                viewModel = vm,
+                onServerSelected = { server ->
+                    RetrofitClient.setServer(server.url)
+                    val savedToken = serverConfig.getToken()
+                    if (savedToken != null) {
+                        RetrofitClient.token = savedToken
+                        serverConfig.saveToken(savedToken)
+                    }
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.SERVER_LIST) { inclusive = true }
+                    }
+                },
+            )
+        }
+
         // ---- Auth ----
         composable(Routes.LOGIN) {
             LoginScreen(
@@ -70,7 +113,9 @@ fun AppNavGraph() {
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onLogout = {
-                    navController.navigate(Routes.LOGIN) {
+                    RetrofitClient.reset()
+                    serverConfig.clearToken()
+                    navController.navigate(Routes.SERVER_LIST) {
                         popUpTo(0) { inclusive = true }
                     }
                     isLoggedIn = false

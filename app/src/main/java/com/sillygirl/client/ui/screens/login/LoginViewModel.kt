@@ -2,14 +2,16 @@ package com.sillygirl.client.ui.screens.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.repository.AuthRepository
+import com.sillygirl.client.data.repository.ServerConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class LoginUiState(
-    val serverUrl: String = "http://192.168.1.18:3000",
+    val serverUrl: String = "",
     val username: String = "",
     val password: String = "",
     val isLoading: Boolean = false,
@@ -17,9 +19,17 @@ data class LoginUiState(
     val isLoggedIn: Boolean = false,
 )
 
-class LoginViewModel : ViewModel() {
+class LoginViewModel(
+    private val serverConfig: ServerConfig,
+) : ViewModel() {
     private val repository = AuthRepository()
-    private val _uiState = MutableStateFlow(LoginUiState())
+    private val _uiState = MutableStateFlow(
+        LoginUiState(
+            serverUrl = serverConfig.getDefaultServer()?.url ?: "",
+            username = serverConfig.getDefaultServer()?.username ?: "",
+            password = serverConfig.getDefaultServer()?.password ?: "",
+        )
+    )
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     fun updateServerUrl(url: String) {
@@ -46,6 +56,15 @@ class LoginViewModel : ViewModel() {
             val result = repository.login(state.serverUrl, state.username, state.password)
             result.fold(
                 onSuccess = {
+                    // 如果是从服务器列表选择的，保存登录凭证
+                    val existingServers = serverConfig.getServers()
+                    val matchingIndex = existingServers.indexOfFirst { it.url == state.serverUrl }
+                    if (matchingIndex >= 0) {
+                        serverConfig.updateServer(matchingIndex, existingServers[matchingIndex].copy(
+                            username = state.username,
+                            password = state.password,
+                        ))
+                    }
                     _uiState.value = _uiState.value.copy(isLoading = false, isLoggedIn = true)
                 },
                 onFailure = { e ->
@@ -56,5 +75,15 @@ class LoginViewModel : ViewModel() {
                 }
             )
         }
+    }
+}
+
+/** ViewModel Factory */
+class LoginViewModelFactory(
+    private val serverConfig: ServerConfig,
+) : androidx.lifecycle.ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        return LoginViewModel(serverConfig) as T
     }
 }

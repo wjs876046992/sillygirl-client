@@ -13,9 +13,26 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
     var token: String? = null
+    private var _api: SillyGirlApi? = null
+    private var _currentServer: String = ""
+
     val gson = GsonBuilder()
         .setLenient()
         .create()
+
+    /** 设置服务器地址并重建 Retrofit 实例 */
+    fun setServer(baseUrl: String) {
+        _currentServer = baseUrl.trimEnd('/')
+        _api = null // invalidate cached instance
+        ApiConfig.setServer(baseUrl)
+    }
+
+    /** 重置所有状态（登出） */
+    fun reset() {
+        _currentServer = ""
+        _api = null
+        token = null
+    }
 
     // Cookie manager persists tokens between requests
     private val cookieManager = CookieManager().apply {
@@ -50,14 +67,15 @@ object RetrofitClient {
 
     val api: SillyGirlApi
         get() {
-            val baseUrl = ApiConfig.serverBaseUrl
-            require(baseUrl.isNotBlank()) { "Server URL not set. Please login first." }
-            return Retrofit.Builder()
+            _api?.let { return it }
+            val baseUrl = requireNotNull(_currentServer) { "Server URL not set" }
+            _api = Retrofit.Builder()
                 .baseUrl(baseUrl.ensureTrailingSlash())
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build()
                 .create(SillyGirlApi::class.java)
+            return _api!!
         }
 }
 

@@ -11,13 +11,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sillygirl.client.LocalServerConfig
+import com.sillygirl.client.data.api.RetrofitClient
+import com.sillygirl.client.data.repository.AuthRepository
+import com.sillygirl.client.data.repository.ServerConfig
+import com.sillygirl.client.ui.screens.settings.SettingsViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onLogout: () -> Unit,
     onBack: () -> Unit = {},
-    viewModel: SettingsViewModel = viewModel(),
+    viewModel: SettingsViewModel = viewModel(factory = SettingsViewModelFactory(LocalServerConfig.current)),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -26,7 +31,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("退出登录") },
-            text = { Text("确定要退出登录吗？需要重新输入服务器地址和密码。") },
+            text = { Text("确定要退出登录吗？需要重新选择服务器并登录。") },
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false

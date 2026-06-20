@@ -1,13 +1,12 @@
 package com.sillygirl.client.data.repository
 
-import com.sillygirl.client.data.api.ApiConfig
 import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.model.UserData
 
 class AuthRepository {
     suspend fun login(serverUrl: String, username: String, password: String): Result<Boolean> {
         return try {
-            ApiConfig.setServer(serverUrl)
+            RetrofitClient.setServer(serverUrl)
             val response = RetrofitClient.api.login(
                 mapOf("username" to username, "password" to password)
             )
