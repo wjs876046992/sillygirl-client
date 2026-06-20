@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
 
 data class DashboardUiState(
     val isLoading: Boolean = true,
@@ -40,41 +39,38 @@ class DashboardViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val userDeferred = async { authRepo.getCurrentUserInfo() }
-                val mastersDeferred = async { masterRepo.getMasters() }
-                val tasksDeferred = async { taskRepo.getTasks() }
-                val fenyongDeferred = async { fenyongRepo.getStats(init = true) }
+                val userResult = authRepo.getCurrentUserInfo()
+                var masters = 0
+                var tasks = 0
+                var fenyongStats: FenyongStatData? = null
 
-                val userResult = userDeferred.await()
-                userResult.onSuccess { user ->
-                    val plugins = user.plugins.size
-                    val masters = mastersDeferred.await().getOrDefault(emptyList()).size
-                    val tasks = tasksDeferred.await().getOrDefault(emptyList()).count { it.enable }
-                    val fenyongStats = fenyongDeferred.await().getOrNull()?.tongji
+                try { masters = masterRepo.getMasters().getOrThrow().size } catch (_: Exception) {}
+                try { tasks = taskRepo.getTasks().getOrThrow().count { it.enable } } catch (_: Exception) {}
+                try { fenyongStats = fenyongRepo.getStats(init = true).getOrThrow().tongji } catch (_: Exception) {}
 
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        userName = user.name.ifBlank { "管理员" },
-                        avatar = user.avatar,
-                        installedPlugins = plugins,
-                        masterCount = masters,
-                        activeTaskCount = tasks,
-                        fenyongStats = fenyongStats,
-                    )
-                }
-                userResult.onFailure { e ->
-                    val masters = mastersDeferred.await().getOrDefault(emptyList()).size
-                    val tasks = tasksDeferred.await().getOrDefault(emptyList()).count { it.enable }
-                    val fenyongStats = fenyongDeferred.await().getOrNull()?.tongji
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        userName = "管理员",
-                        masterCount = masters,
-                        activeTaskCount = tasks,
-                        fenyongStats = fenyongStats,
-                        error = e.message ?: "加载失败",
-                    )
-                }
+                userResult.fold(
+                    onSuccess = { user ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            userName = user.name.ifBlank { "管理员" },
+                            avatar = user.avatar,
+                            installedPlugins = user.plugins.size,
+                            masterCount = masters,
+                            activeTaskCount = tasks,
+                            fenyongStats = fenyongStats,
+                        )
+                    },
+                    onFailure = { e ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            userName = "管理员",
+                            masterCount = masters,
+                            activeTaskCount = tasks,
+                            fenyongStats = fenyongStats,
+                            error = e.message ?: "加载失败",
+                        )
+                    }
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
