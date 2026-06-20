@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -35,7 +35,7 @@ jobs:
 
       - name: Add & sync Android platform
         run: |
-          npx cap add android --force
+          npx cap add android
           npx cap sync
 
       - name: Build APK (debug)
