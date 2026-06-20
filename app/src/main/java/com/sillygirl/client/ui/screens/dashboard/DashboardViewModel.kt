@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 
 data class DashboardUiState(
     val isLoading: Boolean = true,
@@ -39,49 +40,41 @@ class DashboardViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                var masters = 0
-                var tasks = 0
-                var fenyongStats: FenyongStatData? = null
-
-                // 并行加载多个数据源
-                val userDeferred = kotlinx.coroutines.async { authRepo.getCurrentUserInfo() }
-                val mastersDeferred = kotlinx.coroutines.async { masterRepo.getMasters() }
-                val tasksDeferred = kotlinx.coroutines.async { taskRepo.getTasks() }
-                val fenyongDeferred = kotlinx.coroutines.async { fenyongRepo.getStats(init = true) }
+                val userDeferred = async { authRepo.getCurrentUserInfo() }
+                val mastersDeferred = async { masterRepo.getMasters() }
+                val tasksDeferred = async { taskRepo.getTasks() }
+                val fenyongDeferred = async { fenyongRepo.getStats(init = true) }
 
                 val userResult = userDeferred.await()
-                val mastersResult = mastersDeferred.await()
-                val tasksResult = tasksDeferred.await()
-                val fenyongResult = fenyongDeferred.await()
+                userResult.onSuccess { user ->
+                    val plugins = user.plugins.size
+                    val masters = mastersDeferred.await().getOrDefault(emptyList()).size
+                    val tasks = tasksDeferred.await().getOrDefault(emptyList()).count { it.enable }
+                    val fenyongStats = fenyongDeferred.await().getOrNull()?.tongji
 
-                mastersResult.onSuccess { masters = it.size }
-                tasksResult.onSuccess { tasks = it.count { t -> t.enable } }
-                fenyongResult.onSuccess { fenyongStats = it.tongji }
-
-                userResult.fold(
-                    onSuccess = { user ->
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            userName = user.name.ifBlank { "管理员" },
-                            avatar = user.avatar,
-                            installedPlugins = user.plugins.size,
-                            masterCount = masters,
-                            activeTaskCount = tasks,
-                            fenyongStats = fenyongStats,
-                        )
-                    },
-                    onFailure = {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            userName = "管理员",
-                            installedPlugins = 0,
-                            masterCount = masters,
-                            activeTaskCount = tasks,
-                            fenyongStats = fenyongStats,
-                            error = "用户信息加载失败",
-                        )
-                    }
-                )
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        userName = user.name.ifBlank { "管理员" },
+                        avatar = user.avatar,
+                        installedPlugins = plugins,
+                        masterCount = masters,
+                        activeTaskCount = tasks,
+                        fenyongStats = fenyongStats,
+                    )
+                }
+                userResult.onFailure { e ->
+                    val masters = mastersDeferred.await().getOrDefault(emptyList()).size
+                    val tasks = tasksDeferred.await().getOrDefault(emptyList()).count { it.enable }
+                    val fenyongStats = fenyongDeferred.await().getOrNull()?.tongji
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        userName = "管理员",
+                        masterCount = masters,
+                        activeTaskCount = tasks,
+                        fenyongStats = fenyongStats,
+                        error = e.message ?: "加载失败",
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
