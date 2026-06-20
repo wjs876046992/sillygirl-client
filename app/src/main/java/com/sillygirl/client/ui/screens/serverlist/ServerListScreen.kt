@@ -3,27 +3,30 @@ package com.sillygirl.client.ui.screens.serverlist
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Dns
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sillygirl.client.data.repository.ServerConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerListScreen(
-    viewModel: ServerListViewModel = viewModel(),
-    onServerSelected: (com.sillygirl.client.data.repository.ServerConfig.ServerInfo) -> Unit,
+    viewModel: ServerListViewModel,
+    onServerSelected: (ServerConfig.ServerInfo) -> Unit,
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf<Int?>(null) }
@@ -38,12 +41,6 @@ fun ServerListScreen(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            // 如果已有服务器且选中了默认，快捷选择
-            if (uiState.servers.isNotEmpty()) {
-                // FAB 已用于添加
-            }
         }
     ) { padding ->
         Column(
@@ -60,13 +57,6 @@ fun ServerListScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                uiState.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(200.dp),
-                        contentAlignment = Alignment.Center,
-                    ) { CircularProgressIndicator() }
-                }
-
                 uiState.servers.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxWidth().weight(1f),
@@ -106,7 +96,6 @@ fun ServerListScreen(
         }
     }
 
-    // 添加服务器对话框
     if (showAddDialog) {
         AddServerDialog(
             onDismiss = { showAddDialog = false },
@@ -118,7 +107,6 @@ fun ServerListScreen(
         )
     }
 
-    // 删除确认
     showDeleteConfirm?.let { idx ->
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = null },
@@ -139,7 +127,7 @@ fun ServerListScreen(
 
 @Composable
 fun ServerListItem(
-    server: com.sillygirl.client.data.repository.ServerConfig.ServerInfo,
+    server: ServerConfig.ServerInfo,
     isSelected: Boolean,
     onToggleDefault: () -> Unit,
     onDelete: () -> Unit,
@@ -152,6 +140,7 @@ fun ServerListItem(
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
             else MaterialTheme.colorScheme.surface,
         ),
+        shape = RoundedCornerShape(12.dp),
     ) {
         Row(
             modifier = Modifier
@@ -181,7 +170,7 @@ fun ServerListItem(
             }
             IconButton(onClick = onToggleDefault) {
                 Icon(
-                    if (isSelected) Icons.Filled.CheckCircle else Icons.Filled.CheckCircle,
+                    Icons.Filled.CheckCircle,
                     contentDescription = if (isSelected) "默认服务器" else "设为默认",
                     tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -200,7 +189,7 @@ fun ServerListItem(
 @Composable
 fun AddServerDialog(
     onDismiss: () -> Unit,
-    onAdd: (com.sillygirl.client.data.repository.ServerConfig.ServerInfo) -> Unit,
+    onAdd: (ServerConfig.ServerInfo) -> Unit,
     error: String?,
 ) {
     var url by remember { mutableStateOf("") }
@@ -245,12 +234,13 @@ fun AddServerDialog(
                     onValueChange = { password = it },
                     label = { Text("密码") },
                     singleLine = true,
-                    visualTransformation = if (showPassword) androidx.compose.ui.text.input.VisualTransformation.None
-                        else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    visualTransformation = if (showPassword) VisualTransformation.None
+                        else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = { showPassword = !showPassword }) {
                             Icon(
-                                androidx.compose.material.icons.Icons.Filled.Visibility,
+                                if (showPassword) Icons.Filled.VisibilityOff
+                                else Icons.Filled.Visibility,
                                 if (showPassword) "隐藏" else "显示",
                             )
                         }
@@ -266,7 +256,7 @@ fun AddServerDialog(
             TextButton(
                 onClick = {
                     if (url.isBlank()) return@TextButton
-                    onAdd(com.sillygirl.client.data.repository.ServerConfig.ServerInfo(
+                    onAdd(ServerConfig.ServerInfo(
                         url = url,
                         username = username,
                         password = password,

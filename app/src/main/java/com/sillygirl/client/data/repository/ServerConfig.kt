@@ -2,7 +2,7 @@ package com.sillygirl.client.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.sillygirl.client.data.api.ApiConfig
+import com.sillygirl.client.data.api.RetrofitClient
 
 /**
  * ServerConfig 管理傻妞服务器配置，持久化到 SharedPreferences
@@ -25,7 +25,7 @@ class ServerConfig(private val context: Context) {
         val password: String,
         val alias: String = "",
     ) {
-        fun displayName: String = alias.ifBlank { url }
+        val displayName: String = alias.ifBlank { url }
     }
 
     /** 获取所有已保存的服务器列表 */
@@ -38,26 +38,25 @@ class ServerConfig(private val context: Context) {
         }
     }
 
-    /** 保存服务器列表（JSON 格式：[url, username, password, alias]） */
     private fun saveServers(servers: List<ServerInfo>) {
-        val json = servers.joinToString("|||") { s ->
-            "${escapeField(s.url)}|||${escapeField(s.username)}|||${escapeField(s.password)}|||${escapeField(s.alias)}"
+        val entries = servers.map { s ->
+            encodeField(s.url) + "|" +
+            encodeField(s.username) + "|" +
+            encodeField(s.password) + "|" +
+            encodeField(s.alias)
         }
-        prefs.edit().putString(KEY_SERVERS, json).apply()
+        prefs.edit().putString(KEY_SERVERS, entries.joinToString(";;")).apply()
     }
 
     /** 添加新服务器 */
     fun addServer(server: ServerInfo) {
         val servers = getServers()
-        // 检查是否已存在相同 URL
         if (servers.any { it.url == server.url }) {
             throw IllegalArgumentException("服务器地址已存在")
         }
         val newServers = servers + server
         saveServers(newServers)
-        // 设为默认
         prefs.edit().putInt(KEY_DEFAULT_INDEX, newServers.size - 1).apply()
-        ApiConfig.setServer(server.url)
     }
 
     /** 更新服务器 */
@@ -77,10 +76,8 @@ class ServerConfig(private val context: Context) {
         val defaultIdx = prefs.getInt(KEY_DEFAULT_INDEX, 0)
         if (servers.isEmpty()) {
             prefs.edit().remove(KEY_DEFAULT_INDEX).apply()
-            ApiConfig.setServer("")
         } else if (defaultIdx >= servers.size) {
             prefs.edit().putInt(KEY_DEFAULT_INDEX, servers.size - 1).apply()
-            ApiConfig.setServer(servers.last().url)
         }
     }
 
@@ -92,10 +89,6 @@ class ServerConfig(private val context: Context) {
     /** 设置默认服务器 */
     fun setDefaultIndex(index: Int) {
         prefs.edit().putInt(KEY_DEFAULT_INDEX, index).apply()
-        val servers = getServers()
-        if (index in servers.indices) {
-            ApiConfig.setServer(servers[index].url)
-        }
     }
 
     /** 获取当前默认服务器 */
@@ -123,22 +116,22 @@ class ServerConfig(private val context: Context) {
     }
 
     private fun parseServers(json: String): List<ServerInfo> {
-        return json.split("|||").mapNotNull { entry ->
-            val parts = entry.split("|||")
+        return json.split(";;").mapNotNull { entry ->
+            val parts = entry.split("|")
             if (parts.size >= 4) {
                 ServerInfo(
-                    url = unescapeField(parts[0]),
-                    username = unescapeField(parts[1]),
-                    password = unescapeField(parts[2]),
-                    alias = unescapeField(parts[3]),
+                    url = decodeField(parts[0]),
+                    username = decodeField(parts[1]),
+                    password = decodeField(parts[2]),
+                    alias = decodeField(parts[3]),
                 )
             } else null
         }
     }
 
-    private fun escapeField(s: String): String =
-        s.replace("|||", "||||||").replace(",", "|||,")
+    private fun encodeField(s: String): String =
+        s.replace("|", "||").replace(";", ";;")
 
-    private fun unescapeField(s: String): String =
-        s.replace("|||,"," ,").replace("||||||","|||")
+    private fun decodeField(s: String): String =
+        s.replace(";;", ";").replace("||", "|")
 }

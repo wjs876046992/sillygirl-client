@@ -2,8 +2,6 @@ package com.sillygirl.client.ui.screens.serverlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.CreationExtras
-import com.sillygirl.client.LocalServerConfig
 import com.sillygirl.client.data.repository.ServerConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,12 +59,12 @@ class ServerListViewModel(
     }
 }
 
-/** Factory that injects ServerConfig from CompositionLocal */
+/** Factory that injects ServerConfig */
 class ServerListViewModelFactory(
     private val serverConfig: ServerConfig,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return ServerListViewModel(serverConfig) as T
     }
 }

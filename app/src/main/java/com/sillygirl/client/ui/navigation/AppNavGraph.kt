@@ -1,7 +1,6 @@
 package com.sillygirl.client.ui.navigation
 
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -46,7 +45,6 @@ fun AppNavGraph() {
     var hasServer by remember { mutableStateOf(defaultServer != null) }
     var isLoggedIn by remember { mutableStateOf(RetrofitClient.token != null && hasServer) }
 
-    // 当服务器状态变化时更新
     LaunchedEffect(defaultServer, RetrofitClient.token) {
         hasServer = defaultServer != null
         isLoggedIn = RetrofitClient.token != null && hasServer
@@ -64,12 +62,12 @@ fun AppNavGraph() {
     ) {
         // ---- Server Selection ----
         composable(Routes.SERVER_LIST) {
-            val vm = androidx.lifecycle.viewmodel.compose.viewModel(
-                factory = ServerListViewModelFactory(LocalServerConfig.current)
+            val vm = androidx.lifecycle.viewmodel.compose.viewModel<ServerListViewModel>(
+                factory = ServerListViewModelFactory(serverConfig)
             )
             ServerListScreen(
                 viewModel = vm,
-                onServerSelected = { server ->
+                onServerSelected = { server: ServerConfig.ServerInfo ->
                     RetrofitClient.setServer(server.url)
                     val savedToken = serverConfig.getToken()
                     if (savedToken != null) {
