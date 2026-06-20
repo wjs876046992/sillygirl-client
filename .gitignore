@@ -1,11 +1,12 @@
-node_modules/
-dist/
+# Build
+build/
+app/build/
+.idea/
+*.iml
 *.log
-.env
-.env.local
+local.properties
+.gradle/
 
-# Capacitor Android
-android/app/build/
-android/app/.gradle/
-android/local.properties
-android/.idea/
+# OS
+.DS_Store
+Thumbs.db
