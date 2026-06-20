@@ -1,56 +1,83 @@
 package com.sillygirl.client.ui.screens.fenyong
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.sillygirl.client.data.model.FenyongOrder
-import com.sillygirl.client.data.model.FenyongTab
-import com.sillygirl.client.data.model.FenyongTimeRange
-import com.sillygirl.client.data.model.FenyongTongjiData
 import java.text.SimpleDateFormat
 import java.util.*
 
 // ===== 颜色 =====
 private val BlueColor = Color(0xFF1890FF)
-private val BlueLightBg = Color(0xFFE6F7FF)
+private val BlueDark = Color(0xFF1677FF)
 private val GreenColor = Color(0xFF52C41A)
-private val GreenLightBg = Color(0xFFF6FFED)
+private val RedColor = Color(0xFFE60012)
+private val OrangeColor = Color(0xFFFF5000)
+private val PddColor = Color(0xFFE02A24)
 private val PurpleColor = Color(0xFF722ED1)
-private val OrangeColor = Color(0xFFFF8C1A)
-private val GrayTextColor = Color(0xFF00000073)
-private val GrayDarkText = Color(0xFF000000D9)
-private val LightBg = Color(0xFFFFF0F6)
+private val GrayText = Color(0xFF999999)
+private val DarkGray = Color(0xFF333333)
 private val LightBgGray = Color(0xFFF5F5F5)
+
+// ===== 平台名称 =====
+private data class PlatformInfo(
+    val code: String,
+    val name: String,
+    val color: Color,
+)
+
+private val PLATFORMS = listOf(
+    PlatformInfo("jd", "京东", RedColor),
+    PlatformInfo("tb", "淘宝", OrangeColor),
+    PlatformInfo("pdd", "拼多多", PddColor),
+)
+
+private fun getPlatform(code: String): PlatformInfo? {
+    return PLATFORMS.find { it.code == code.lowercase() }
+}
+
+private fun getPlatformColor(code: String): Color {
+    return getPlatform(code)?.color ?: GrayText
+}
+
+private fun getPlatformName(code: String): String {
+    return getPlatform(code)?.name ?: code
+}
+
+private fun formatOrderTime(ts: Long?): String {
+    if (ts == null || ts == 0L) return "—"
+    return try {
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA)
+        sdf.format(Date(ts * 1000))
+    } catch (_: Exception) {
+        "—"
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FenyongScreen(
     onBack: () -> Unit = {},
+    onLogout: () -> Unit = {},
     viewModel: FenyongViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -65,15 +92,8 @@ fun FenyongScreen(
                     }
                 },
                 actions = {
-                    if (uiState.isRefreshing || uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        IconButton(onClick = { viewModel.refreshAll() }) {
-                            Icon(Icons.Filled.Refresh, "刷新")
-                        }
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, "退出登录")
                     }
                 },
             )
@@ -83,7 +103,7 @@ fun FenyongScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             when {
-                uiState.isLoading && uiState.orders.isEmpty() -> {
+                uiState.isLoading && uiState.dashboard == null && uiState.orders.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -92,47 +112,52 @@ fun FenyongScreen(
                     }
                 }
                 uiState.error != null && uiState.orders.isEmpty() -> {
-                    ErrorState(
-                        message = uiState.error ?: "加载失败",
-                        onRetry = { viewModel.refreshAll() },
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(onClick = { viewModel.loadData() }) {
+                                Text("重试")
+                            }
+                        }
+                    }
                 }
                 else -> {
                     LazyColumn(
-                        contentPadding = PaddingValues(vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
-                        // 1. 时间范围 + 用户筛选
+                        // 1. Dashboard Summary
+                        uiState.dashboard?.let { dash ->
+                            item {
+                                FenyongSummaryCard(dash)
+                            }
+                        }
+
+                        // 2. Search bar
                         item {
-                            FilterBar(uiState, viewModel)
+                            SearchBarWidget(
+                                keyword = uiState.keyword,
+                                onKeywordChange = viewModel::setKeyword,
+                                onSearch = { viewModel.loadOrders(1) },
+                                onClear = { viewModel.clearSearch() },
+                            )
                         }
 
-                        // 2. 统计数据卡片（12 项指标）
-                        uiState.tongji?.let { tongji ->
-                            item {
-                                StatisticsCard(tongji)
-                            }
-                        }
-
-                        // 3. 订单 Tab 切换
-                        if (uiState.tabs.isNotEmpty()) {
-                            item {
-                                TabBar(
-                                    tabs = uiState.tabs,
-                                    activeTab = uiState.activeTab,
-                                    onTabChange = viewModel::changeTab,
-                                )
-                            }
-                        }
-
-                        // 4. 订单列表
+                        // 3. Orders list
                         if (uiState.orders.isEmpty() && !uiState.isLoading) {
                             item {
                                 Box(
                                     modifier = Modifier.fillMaxWidth(),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    Text("暂无订单数据", color = GrayTextColor)
+                                    Text("暂无订单", color = GrayText)
                                 }
                             }
                         } else {
@@ -141,10 +166,14 @@ fun FenyongScreen(
                             }
                         }
 
-                        // 5. 加载更多
-                        if (uiState.hasMore) {
+                        // 4. Pagination
+                        if (uiState.total > 20) {
                             item {
-                                LoadMoreButton { viewModel.loadMore() }
+                                PaginationBar(
+                                    currentPage = uiState.page,
+                                    total = uiState.total,
+                                    onPageChange = viewModel::loadOrders,
+                                )
                             }
                         }
                     }
@@ -154,509 +183,376 @@ fun FenyongScreen(
     }
 }
 
-// ===== FilterBar: 时间范围 + 用户选择 =====
+// ===== FenyongSummaryCard =====
 
 @Composable
-fun FilterBar(
-    uiState: FenyongUiState,
-    viewModel: FenyongViewModel,
-) {
+fun FenyongSummaryCard(data: com.sillygirl.client.data.model.FenyongDashboardResponse) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // 时间范围选择
-            Text("时间范围：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                items(FenyongTimeRange.options) { option ->
-                    TimeRangeChip(
-                        label = option.label,
-                        selected = uiState.timeRange == option.value,
-                        onClick = { viewModel.changeTimeRange(option.value) },
-                    )
-                }
-            }
-
-            // 用户选择
-            val users = uiState.tongji?.results?.filter { it.value.isNotEmpty() && it.label.isNotEmpty() }
-                ?.sortedByDescending { it.count } ?: emptyList()
-
-            if (users.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("选择用户：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    // "全部" chip
-                    item {
-                        UserChip(
-                            label = "--全部--",
-                            count = uiState.tongji?.orderNum ?: 0,
-                            selected = uiState.activeUser == "#",
-                            onClick = { viewModel.changeUser("#") },
-                        )
-                    }
-                    // "已绑" / "未绑" chips
-                    items(users) { user ->
-                        UserChip(
-                            label = user.label,
-                            count = user.count,
-                            selected = uiState.activeUser == user.value,
-                            onClick = { viewModel.changeUser(user.value) },
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun TimeRangeChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    val backgroundColor = if (selected) BlueColor else Color(0xFFD9D9D9)
-    val textColor = if (selected) Color.White else Color.DarkGray
-
-    Box(
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(backgroundColor)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-    ) {
-        Text(
-            label,
-            color = textColor,
-            style = MaterialTheme.typography.labelMedium,
-        )
-    }
-}
-
-@Composable
-fun UserChip(label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) BlueLightBg else LightBgGray,
-        ),
-        onClick = onClick,
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = if (selected) BlueColor else GrayTextColor,
-                maxLines = 1,
-            )
-            Badge() {
-                Text(
-                    count.toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (selected) BlueColor else GrayTextColor,
-                )
-            }
-        }
-    }
-}
-
-// ===== StatisticsCard: 12 项统计指标（2 列网格） =====
-
-@Composable
-fun StatisticsCard(tongji: FenyongTongjiData) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                "统计数据",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 2 列网格
-            GridStatItem("订单总数", tongji.orderNum.toString())
-            GridStatItem("用户总数", tongji.userNum.toString())
-            GridStatItem("实际总收入(含返佣)", "$${formatMoney(tongji.totalActual)}")
-            GridStatItem("预估总收入(含返佣)", "$${formatMoney(tongji.totalEstimate)}")
-            GridStatItem("实际返佣金额", "$${formatMoney(tongji.totalRakeActual)}")
-            GridStatItem("预估返佣金额", "$${formatMoney(tongji.totalRakeEstimate)}")
-            GridStatItem("实际返佣收益", "$${formatMoney(tongji.totalIrakeActual)}")
-            GridStatItem("预估返佣收益", "$${formatMoney(tongji.totalIrakeEstimate)}")
-            GridStatItem(
-                "实际返佣收益率",
-                "${String.format("%.1f%%", tongji.totalIrakeActualPct * 100)}",
-            )
-            GridStatItem(
-                "预估返佣收益率",
-                "${String.format("%.1f%%", tongji.totalIrakeEstimatePct * 100)}",
-            )
-            GridStatItem("实际总收入(不含返佣)", "$${formatMoney(tongji.totalIactual)}")
-            GridStatItem("预估总收入(不含返佣)", "$${formatMoney(tongji.totalIestimate)}")
-        }
-    }
-}
-
-@Composable
-fun GridStatItem(label: String, value: String) {
-    Column(
-        modifier = Modifier
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            value,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = GrayTextColor,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-        )
-    }
-}
-
-// ===== TabBar: 订单 Tab 切换 =====
-
-@Composable
-fun TabBar(
-    tabs: List<FenyongTab>,
-    activeTab: String,
-    onTabChange: (String) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        tabs.forEach { tab ->
-            val selected = activeTab == tab.key
-            TabChip(
-                label = tab.title,
-                count = 0, // 从 tongji 中获取不太方便，用 0 占位
-                selected = selected,
-                onClick = { onTabChange(tab.key) },
-            )
-        }
-    }
-}
-
-@Composable
-fun TabChip(label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) BlueColor else LightBgGray,
-        ),
-        onClick = onClick,
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                color = if (selected) Color.White else GrayTextColor,
-            )
-            if (count > 0) {
-                Badge(
-                    containerColor = if (selected) Color.White else BlueLightBg,
-                ) {
-                    Text(
-                        count.toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (selected) BlueColor else BlueColor,
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ===== OrderCard: 订单卡片 =====
-
-@Composable
-fun OrderCard(order: FenyongOrder) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // Top row: 平台标签 + 标题 + 订单时间 + 已绑用户
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header: Today's estimated + orders
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // 平台标签
-                if (order.site.isNotBlank()) {
-                    val (siteText, siteColor) = getSiteInfo(order.site)
-                    AssistChip(
-                        onClick = {},
-                        label = { Text(siteText) },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = siteColor.copy(alpha = 0.15f),
-                            labelColor = siteColor,
+                // Icon
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(MaterialTheme.shapes.large)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFF667EEA),
+                                    Color(0xFF764BA2),
+                                ),
+                            ),
                         ),
-                    )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("💰", fontSize = 22.sp)
                 }
 
-                // 订单时间
-                if (order.createdTime > 0) {
+                Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
                     Text(
-                        formatTime(order.createdTime),
+                        "今日预估佣金",
                         style = MaterialTheme.typography.labelSmall,
-                        color = GrayTextColor,
+                        color = GrayText,
+                    )
+                    Text(
+                        "¥${formatMoney(data.today.estimate)}",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = BlueDark,
                     )
                 }
 
-                // 已绑用户标签
-                order.bind?.let { bind ->
-                    AssistChip(
-                        onClick = {},
-                        label = { Text("用户") },
-                        leadingIcon = {
-                            Icon(
-                                painter = androidx.compose.ui.res.painterResource(android.R.drawable.presence_online),
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                            )
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = PurpleColor.copy(alpha = 0.1f),
-                            labelColor = PurpleColor,
-                        ),
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        "今日订单",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = GrayText,
+                    )
+                    Text(
+                        "${data.today.orders} 单",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkGray,
                     )
                 }
             }
 
+            // Comparison row: yesterday / 7 days / month
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = LightBgGray)
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 主内容区域：图片 + 标题 + 金额
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                ComparisonItem("昨日", data.yesterday.estimate, data.yesterday.orders)
+                ComparisonItem("近7日", data.last7days.estimate, data.last7days.orders)
+                ComparisonItem("近月", data.lastMonth.estimate, data.lastMonth.orders)
+            }
+
+            // Platform revenue
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = LightBgGray)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                "平台收益（今日）",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+
+            PLATFORMS.forEach { platform ->
+                val stat = data.platforms[platform.code]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(platform.color),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        platform.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        "${stat?.orders ?: 0}单",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = GrayText,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "¥${formatMoney(stat?.estimate ?: 0.0)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = BlueDark,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ComparisonItem(label: String, estimate: Double, orders: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = GrayText)
+        Text(
+            "¥${formatMoney(estimate)}",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = DarkGray,
+        )
+        Text(
+            "${orders}单",
+            style = MaterialTheme.typography.labelSmall,
+            color = GrayText,
+        )
+    }
+}
+
+// ===== SearchBarWidget =====
+
+@Composable
+fun SearchBarWidget(
+    keyword: String,
+    onKeywordChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onClear: () -> Unit,
+) {
+    OutlinedTextField(
+        value = keyword,
+        onValueChange = onKeywordChange,
+        placeholder = { Text("搜索SKU/订单号") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        trailingIcon = {
+            if (keyword.isNotBlank()) {
+                IconButton(onClick = {
+                    onClear()
+                    onSearch()
+                }) {
+                    Text("✕", color = GrayText)
+                }
+            }
+        },
+        supportingText = {
+            TextButton(onClick = {
+                onSearch()
+            }) {
+                Text("搜索")
+            }
+        },
+    )
+}
+
+// ===== OrderCard =====
+
+@Composable
+fun OrderCard(order: com.sillygirl.client.data.model.FenyongOrder) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            // Image + Info row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.Top,
             ) {
-                // 商品图片
+                // Image
                 if (order.image.isNotBlank()) {
                     AsyncImage(
                         model = order.image,
                         contentDescription = null,
                         modifier = Modifier
-                            .width(80.dp)
-                            .height(80.dp)
-                            .clip(MaterialTheme.shapes.medium),
+                            .size(68.dp)
+                            .clip(MaterialTheme.shapes.small),
                         contentScale = ContentScale.Crop,
                     )
                 } else {
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
-                            .clip(MaterialTheme.shapes.medium)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                            .size(68.dp)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(LightBgGray),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("📦", fontSize = 28.sp)
+                        Text("🛒", fontSize = 28.sp)
                     }
                 }
 
-                // 标题 + 详情
+                // Info
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    // 商品名称
+                    // SKU name
                     Text(
-                        order.name.ifBlank { order.skuName },
+                        order.skuName.ifBlank { order.name },
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
 
-                    // 订单 ID + SKU ID
-                    if (order.orderId.isNotBlank()) {
-                        Text(
-                            "订单号: ${order.orderId}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = GrayTextColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    // Tags row
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        // Platform tag
+                        order.site.takeIf { it.isNotBlank() }?.let { site ->
+                            AssistChip(
+                                onClick = {},
+                                label = { Text(getPlatformName(site)) },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = getPlatformColor(site).copy(alpha = 0.15f),
+                                    labelColor = getPlatformColor(site),
+                                ),
+                            )
+                        }
 
-                    // SKU 信息
-                    if (order.skuName.isNotBlank()) {
-                        Text(
-                            order.skuName,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = GrayTextColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        // Status
+                        order.status.takeIf { it.isNotBlank() }?.let { status ->
+                            Text(
+                                status.split(" ").last(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = GrayText,
+                            )
+                        }
+
+                        // Time (right aligned)
+                        order.createdTime.takeIf { it > 0 }?.let { time ->
+                            Text(
+                                formatOrderTime(time),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFBDBDBD),
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
+            }
 
-                // 金额区域
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+            // Three values below divider
+            if (order.content.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(color = LightBgGray)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    if (order.estimate != 0.0) {
-                        Text(
-                            "预估 ¥${formatMoney(order.estimate)}",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = BlueColor,
+                    // 订单金额 (content[1])
+                    order.content.firstOrNull { it.label == "订单金额" }?.let { item ->
+                        AmountItem(
+                            label = "订单金额",
+                            value = item.value?.toString() ?: "—",
+                            color = DarkGray,
                         )
                     }
-                    if (order.actual != 0.0) {
-                        Text(
-                            "实得 ¥${formatMoney(order.actual)}",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
+
+                    // 预估佣金 (content[2])
+                    order.content.firstOrNull { it.label == "预估佣金" }?.let { item ->
+                        AmountItem(
+                            label = "预估佣金",
+                            value = item.value?.toString() ?: "—",
+                            color = BlueDark,
+                        )
+                    }
+
+                    // 实际佣金 (content[3])
+                    order.content.firstOrNull { it.label == "实际佣金" }?.let { item ->
+                        AmountItem(
+                            label = "实际佣金",
+                            value = item.value?.toString() ?: "—",
                             color = GreenColor,
                         )
                     }
                 }
             }
-
-            // 订单内容详情（订单时间、订单金额、预估/实际佣金）
-            if (order.content.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                Spacer(modifier = Modifier.height(8.dp))
-                OrderContentRow(order)
-            }
-
-            // 状态
-            if (order.status.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AssistChip(
-                        onClick = {},
-                        label = { Text(order.status) },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        ),
-                    )
-                }
-            }
         }
     }
 }
 
 @Composable
-fun OrderContentRow(order: FenyongOrder) {
-    // 显示 content 中的关键信息（订单时间、订单金额、预估佣金、实际佣金）
-    val rows = order.content.filter { it.label.isNotEmpty() }
-    if (rows.isEmpty()) return
-
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        items(rows) { item ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    item.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = GrayTextColor,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    if (item.status == "success") {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(androidx.compose.foundation.shape.CircleShape)
-                                .background(GreenColor),
-                        )
-                    }
-                    Text(
-                        item.value?.toString() ?: "",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = GrayDarkText,
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ===== Load More =====
-
-@Composable
-fun LoadMoreButton(onLoad: () -> Unit) {
-    TextButton(
-        onClick = onLoad,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text("加载更多")
-    }
-}
-
-// ===== Error State =====
-
-@Composable
-fun ErrorState(message: String, onRetry: () -> Unit) {
+fun AmountItem(label: String, value: String, color: Color) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .weight(1f),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        Text(message, color = MaterialTheme.colorScheme.error)
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedButton(onClick = onRetry) {
-            Text("重试")
+        Text(label, style = MaterialTheme.typography.labelSmall, color = GrayText)
+        Text(
+            if (value != "—") "¥$value" else value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = color,
+        )
+    }
+}
+
+// ===== PaginationBar =====
+
+@Composable
+fun PaginationBar(
+    currentPage: Int,
+    total: Int,
+    onPageChange: (Int) -> Unit,
+) {
+    val totalPages = (total + 19) / 20
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(
+            onClick = { if (currentPage > 1) onPageChange(currentPage - 1) },
+            enabled = currentPage > 1,
+        ) {
+            Text("上一页")
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            "$currentPage / $totalPages",
+            style = MaterialTheme.typography.bodySmall,
+            color = GrayText,
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+
+        TextButton(
+            onClick = { onPageChange(currentPage + 1) },
+            enabled = currentPage * 20 < total,
+        ) {
+            Text("下一页")
         }
     }
 }
 
 // ===== 工具函数 =====
 
-private fun formatTime(timestamp: Long): String {
-    if (timestamp == 0L) return ""
-    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CHINA)
-    return sdf.format(Date(timestamp * 1000))
-}
-
 private fun formatMoney(value: Double): String =
     String.format("%.2f", value)
-
-private fun getSiteInfo(site: String): Pair<String, Color> {
-    return when (site.lowercase()) {
-        "jd" -> "京东" to Color(0xFFE60012)
-        "tb" -> "淘宝" to Color(0xFFFF5000)
-        "pdd" -> "拼多多" to Color(0xFFE02A24)
-        else -> site to GrayTextColor
-    }
-}
