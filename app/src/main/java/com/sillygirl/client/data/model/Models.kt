@@ -55,33 +55,79 @@ data class PluginInfo(
     val debug: Boolean = false,
 )
 
-data class FenyongDashboardResponse(
-    val success: Boolean = false,
-    val today: FenyongPeriodStats = FenyongPeriodStats(),
-    val yesterday: FenyongPeriodStats = FenyongPeriodStats(),
-    val last7days: FenyongPeriodStats = FenyongPeriodStats(),
-    val lastMonth: FenyongPeriodStats = FenyongPeriodStats(),
-    val platforms: Map<String, FenyongPlatformStats> = emptyMap(),
-    val totalSettled: Double = 0.0,
-    val totalUnsettled: Double = 0.0,
-    val totalOrders: Int = 0,
-)
+// ===== Fenyong =====
 
+/**
+ * 统计周期数据（dashboard 中 today/yesterday/last7days/lastMonth 的结构）
+ */
 data class FenyongPeriodStats(
     val orders: Int = 0,
     val estimate: Double = 0.0,
     val actual: Double = 0.0,
 )
 
+/**
+ * 平台统计（dashboard 中 platforms 的结构）
+ */
 data class FenyongPlatformStats(
     val orders: Int = 0,
     val estimate: Double = 0.0,
     val actual: Double = 0.0,
 )
 
+/**
+ * dashboard API 返回（/api/fenyong/dashboard）
+ */
+data class FenyongDashboardResponse(
+    val success: Boolean = false,
+    val today: FenyongPeriodStats = FenyongPeriodStats(),
+    val yesterday: FenyongPeriodStats = FenyongPeriodStats(),
+    val last7days: FenyongPeriodStats = FenyongPeriodStats(),
+    val lastMonth: FenyongPeriodStats = FenyongPeriodStats(),
+    @SerializedName("platforms") val platforms: Map<String, FenyongPlatformStats> = emptyMap(),
+    @SerializedName("total_settled") val totalSettled: Double = 0.0,
+    @SerializedName("total_unsettled") val totalUnsettled: Double = 0.0,
+    @SerializedName("total_orders") val totalOrders: Int = 0,
+)
+
+/**
+ * tongji API 返回（/api/fenyong/tongji）- 12 项统计指标 + 用户列表
+ */
+data class FenyongTongjiResponse(
+    val success: Boolean = false,
+    val data: FenyongTongjiData? = null,
+)
+
+data class FenyongTongjiData(
+    @SerializedName("order_num") val orderNum: Int = 0,
+    @SerializedName("user_num") val userNum: Int = 0,
+    @SerializedName("total_actual") val totalActual: Double = 0.0,
+    @SerializedName("total_estimate") val totalEstimate: Double = 0.0,
+    @SerializedName("total_rake_actual") val totalRakeActual: Double = 0.0,
+    @SerializedName("total_rake_estimate") val totalRakeEstimate: Double = 0.0,
+    @SerializedName("total_irake_actual") val totalIrakeActual: Double = 0.0,
+    @SerializedName("total_irake_estimate") val totalIrakeEstimate: Double = 0.0,
+    @SerializedName("total_irake_actual_pct") val totalIrakeActualPct: Double = 0.0,
+    @SerializedName("total_irake_estimate_pct") val totalIrakeEstimatePct: Double = 0.0,
+    @SerializedName("total_iactual") val totalIactual: Double = 0.0,
+    @SerializedName("total_iestimate") val totalIestimate: Double = 0.0,
+    val results: List<FenyongUserItem> = emptyList(),
+)
+
+data class FenyongUserItem(
+    val label: String = "",
+    val value: String = "",
+    val count: Int = 0,
+)
+
+/**
+ * 订单列表 API 返回（/api/fanyong）
+ */
 data class FenyongOrderResponse(
     val success: Boolean = false,
     val data: List<FenyongOrder> = emptyList(),
+    val tongji: FenyongTongjiData? = null,
+    val tabs: List<FenyongTab> = emptyList(),
     val page: Int = 1,
     val total: Int = 0,
 )
@@ -91,12 +137,25 @@ data class FenyongOrder(
     val image: String = "",
     @SerializedName("sku_name") val skuName: String = "",
     val status: String = "",
-    @SerializedName("time") val time: Long = 0,
+    @SerializedName("created_time") val createdTime: Long = 0,
     val site: String = "",
     @SerializedName("sku_id") val skuId: String = "",
     @SerializedName("order_id") val orderId: String = "",
     @SerializedName("estimate") val estimate: Double = 0.0,
     @SerializedName("actual") val actual: Double = 0.0,
+    @SerializedName("content") val content: List<FenyongOrderContent> = emptyList(),
+    val bind: FenyongBind? = null,
+)
+
+data class FenyongOrderContent(
+    val label: String = "",
+    val value: Any? = null,
+    val status: String = "",
+)
+
+data class FenyongBind(
+    val platform: String = "",
+    @SerializedName("user_id") val userId: String = "",
 )
 
 data class FenyongTab(
@@ -104,6 +163,41 @@ data class FenyongTab(
     val title: String = "",
     val value: String = "",
 )
+
+/**
+ * 时间范围常量
+ */
+data object FenyongTimeRange {
+    const val ALL = 0       // 全部
+    const val TODAY = 1     // 今天
+    const val YESTERDAY = 2 // 昨天
+    const val LAST_7D = 7   // 7天内
+    const val LAST_MONTH = 30 // 一个月内
+    const val LAST_MONTH_2 = 60 // 上个月
+    const val LAST_YEAR = 365 // 一年内
+    const val LAST_YEAR_2 = 730 // 去年
+    const val CUSTOM = -1   // 自定义
+
+    val options = listOf(
+        TimeRangeOption(0, "全部", "全部订单"),
+        TimeRangeOption(1, "今天", "今天订单"),
+        TimeRangeOption(2, "昨天", "昨天订单"),
+        TimeRangeOption(7, "7天内", "最近7天订单"),
+        TimeRangeOption(30, "一个月内", "最近一个月订单"),
+        TimeRangeOption(60, "上个月", "上一个月订单"),
+        TimeRangeOption(365, "一年内", "最近一年订单"),
+        TimeRangeOption(730, "去年", "去年订单"),
+        TimeRangeOption(-1, "自定义", "自定义时间范围"),
+    )
+}
+
+data class TimeRangeOption(
+    val value: Int,
+    val label: String,
+    val description: String,
+)
+
+// ===== Masters =====
 
 data class MastersResponse(
     val success: Boolean = false,
@@ -123,6 +217,8 @@ data class PlatformOption(
     val label: String = "",
     val value: String = "",
 )
+
+// ===== Tasks =====
 
 data class TaskResponse(
     val success: Boolean = false,
