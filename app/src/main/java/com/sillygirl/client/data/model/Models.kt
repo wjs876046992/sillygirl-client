@@ -91,13 +91,12 @@ data class FenyongOrder(
     val image: String = "",
     @SerializedName("sku_name") val skuName: String = "",
     val status: String = "",
-    @SerializedName("created_time") val createdTime: Long = 0,
+    @SerializedName("time") val time: Long = 0,
     val site: String = "",
     @SerializedName("sku_id") val skuId: String = "",
     @SerializedName("order_id") val orderId: String = "",
-    @SerializedName("paid_amount") val paidAmount: Double = 0.0,
-    @SerializedName("estimate_commission") val estimateCommission: Double = 0.0,
-    @SerializedName("actual_commission") val actualCommission: Double = 0.0,
+    @SerializedName("estimate") val estimate: Double = 0.0,
+    @SerializedName("actual") val actual: Double = 0.0,
 )
 
 data class FenyongTab(

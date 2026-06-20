@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,7 +24,8 @@ import coil3.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.*
 
-private const val PLACEHOLDER_SIZE = 72
+private val BlueColor = Color(0xFF1890FF)
+private val GreenColor = Color(0xFF52C41A)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -141,12 +143,17 @@ fun StatItem(label: String, value: String) {
 
 @Composable
 fun OrderCard(order: com.sillygirl.client.data.model.FenyongOrder) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Top row: image + title + status chip
+            // Top row: image + title + amounts + status
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 // Product image
@@ -155,14 +162,15 @@ fun OrderCard(order: com.sillygirl.client.data.model.FenyongOrder) {
                         model = order.image,
                         contentDescription = null,
                         modifier = Modifier
-                            .size(72.dp)
+                            .width(64.dp)
+                            .height(64.dp)
                             .clip(MaterialTheme.shapes.small),
                         contentScale = ContentScale.Crop,
                     )
                 } else {
                     Box(
                         modifier = Modifier
-                            .size(72.dp)
+                            .size(64.dp)
                             .clip(MaterialTheme.shapes.small)
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center,
@@ -171,70 +179,111 @@ fun OrderCard(order: com.sillygirl.client.data.model.FenyongOrder) {
                     }
                 }
 
-                // Title with fixed width
+                // Title + Time column
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text(
-                        order.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    order.skuName.takeIf { it.isNotBlank() }?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-
-                // Status chip
-                AssistChip(
-                    onClick = {},
-                    label = { Text(order.status) },
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Bottom row: order time + amounts
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    formatTime(order.createdTime),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        "支付 ¥${formatMoney(order.paidAmount)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    // Title row: title + time
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "预估 ¥${formatMoney(order.estimateCommission)}",
+                            order.name.ifBlank { order.skuName },
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (order.time > 0) {
+                            Text(
+                                formatTime(order.time),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    // Subtitle: SKU + Platform
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        order.skuName.takeIf { it.isNotBlank() }?.let { name ->
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        order.site.takeIf { it.isNotBlank() }?.let { site ->
+                            Text(
+                                "• $site",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                // Amounts column (right aligned)
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "预估",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = BlueColor,
                         )
                         Text(
-                            "实得 ¥${formatMoney(order.actualCommission)}",
-                            style = MaterialTheme.typography.labelSmall,
+                            "¥${formatMoney(order.estimate)}",
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            color = BlueColor,
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "实得",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = GreenColor,
+                        )
+                        Text(
+                            "¥${formatMoney(order.actual)}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = GreenColor,
                         )
                     }
                 }
+            }
+
+            // Bottom row: status chip
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AssistChip(
+                    onClick = {},
+                    label = { Text(order.status) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
+                )
             }
         }
     }
@@ -242,7 +291,7 @@ fun OrderCard(order: com.sillygirl.client.data.model.FenyongOrder) {
 
 private fun formatTime(timestamp: Long): String {
     if (timestamp == 0L) return ""
-    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA)
+    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CHINA)
     return sdf.format(Date(timestamp * 1000))
 }
 
