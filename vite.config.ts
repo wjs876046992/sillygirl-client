@@ -17,7 +17,7 @@ export default defineConfig({
     // 浏览器请求 localhost:3000/api/... → 同域 → cookie 自动生效
     proxy: {
       '/api': {
-        target: 'http://192.168.1.12:8081',
+        target: 'http://192.168.1.18:3000',
         changeOrigin: true,
         // 让 cookie 随当前域名自动存储（不指定 Domain，浏览器用请求域名）
         configure: (proxy, options) => {
