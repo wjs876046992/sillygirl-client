@@ -1,0 +1,7 @@
+// Generated placeholder - do not edit.
+// Created to satisfy capacitor.build.gradle reference when no Cordova plugins are installed.
+ext {
+  cdvMinSdkVersion = rootProject.ext.minSdkVersion
+  cdvPluginPostBuildExtras = []
+  cordovaConfig = [:]
+}
