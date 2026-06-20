@@ -6,7 +6,6 @@ import retrofit2.http.*
 interface SillyGirlApi {
 
     // ===== Auth =====
-
     @POST("api/login/account")
     @Headers("Content-Type: application/json")
     suspend fun login(@Body body: Map<String, String>): LoginResponse
@@ -18,7 +17,6 @@ interface SillyGirlApi {
     suspend fun logout(): Any
 
     // ===== Plugins =====
-
     @GET("api/plugins/list.json")
     suspend fun getPluginList(
         @Query("current") current: Int = 1,
@@ -26,8 +24,23 @@ interface SillyGirlApi {
         @Query("activeKey") activeKey: String = "tab1",
     ): PluginListResponse
 
-    // ===== Fenyong =====
+    @POST("api/plugins/run")
+    @Headers("Content-Type: application/json")
+    suspend fun runPlugin(@Body body: Map<String, String>): ApiResponse<Any>
 
+    @POST("api/plugins/stop")
+    @Headers("Content-Type: application/json")
+    suspend fun stopPlugin(@Body body: Map<String, String>): ApiResponse<Any>
+
+    @POST("api/plugins/install")
+    @Headers("Content-Type: application/json")
+    suspend fun installPlugin(@Body body: Map<String, String>): ApiResponse<Any>
+
+    @POST("api/plugins/uninstall")
+    @Headers("Content-Type: application/json")
+    suspend fun uninstallPlugin(@Body body: Map<String, String>): ApiResponse<Any>
+
+    // ===== Fenyong =====
     @GET("api/fenyong")
     suspend fun getFenyong(
         @Query("init") init: Boolean? = null,
@@ -40,20 +53,45 @@ interface SillyGirlApi {
     ): FenyongStatResponse
 
     // ===== Masters =====
-
     @GET("api/master/list")
     suspend fun getMasters(): MastersResponse
 
-    // ===== Tasks =====
+    @POST("api/master/add")
+    @Headers("Content-Type: application/json")
+    suspend fun addMaster(@Body body: Map<String, String>): ApiResponse<Any>
 
+    @POST("api/master/del")
+    @Headers("Content-Type: application/json")
+    suspend fun delMaster(@Body body: Map<String, String>): ApiResponse<Any>
+
+    // ===== Tasks =====
     @GET("api/tasks")
     suspend fun getTasks(
         @Query("current") current: Int = 1,
         @Query("pageSize") pageSize: Int = 20,
     ): TaskResponse
 
-    // ===== Storage (用于插件管理) =====
+    @POST("api/tasks/add")
+    @Headers("Content-Type: application/json")
+    suspend fun addTask(@Body body: Map<String, String>): ApiResponse<Any>
 
+    @POST("api/tasks/edit")
+    @Headers("Content-Type: application/json")
+    suspend fun editTask(@Body body: Map<String, String>): ApiResponse<Any>
+
+    @POST("api/tasks/del")
+    @Headers("Content-Type: application/json")
+    suspend fun delTask(@Body body: Map<String, Any>): ApiResponse<Any>
+
+    @POST("api/tasks/setEnable")
+    @Headers("Content-Type: application/json")
+    suspend fun setTaskEnable(@Body body: Map<String, Boolean>): ApiResponse<Any>
+
+    @POST("api/tasks/run")
+    @Headers("Content-Type: application/json")
+    suspend fun runTask(@Body body: Map<String, String>): ApiResponse<Any>
+
+    // ===== Storage =====
     @PUT("api/storage")
     @Headers("Content-Type: application/json")
     suspend fun saveStorage(
