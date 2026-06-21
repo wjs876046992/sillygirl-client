@@ -16,16 +16,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewModelScope
 import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.model.MasterInfo
 import com.sillygirl.client.data.repository.MasterRepository
 import com.sillygirl.client.ui.components.GlassCard
 import com.sillygirl.client.ui.theme.DangerColor
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 data class MastersUiState(
     val isLoading: Boolean = true,
@@ -148,6 +149,8 @@ private fun AddMasterDialog(onDismiss: () -> Unit, onAdded: () -> Unit) {
     var number by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
 
+    val scope = rememberCoroutineScope()
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("添加管理员") },
@@ -162,7 +165,7 @@ private fun AddMasterDialog(onDismiss: () -> Unit, onAdded: () -> Unit) {
                 onClick = {
                     if (platform.isBlank() || number.isBlank()) return@TextButton
                     loading = true
-                    viewModelScope.launch {
+                    scope.launch {
                         try {
                             RetrofitClient.api.addMaster(mapOf("platform" to platform, "number" to number))
                             onAdded()

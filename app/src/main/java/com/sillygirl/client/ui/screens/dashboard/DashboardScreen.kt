@@ -121,7 +121,7 @@ fun DashboardScreen(
                                 modifier = Modifier
                                     .size(48.dp)
                                     .clip(RoundedCornerShape(14.dp))
-                                    .background(PrimaryGradientColors, RoundedCornerShape(14.dp)),
+                                    .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(14.dp)),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text("💰", fontSize = 22.sp)

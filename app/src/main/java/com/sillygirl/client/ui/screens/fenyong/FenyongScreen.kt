@@ -2,6 +2,7 @@ package com.sillygirl.client.ui.screens.fenyong
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,8 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.sillygirl.client.ui.components.*
-import androidx.compose.ui.graphics.Color
-import com.sillygirl.client.ui.theme.* 
+import com.sillygirl.client.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
