@@ -1,5 +1,6 @@
 package com.sillygirl.client.ui.screens.fenyong
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sillygirl.client.data.model.FenyongDashboardResponse
@@ -11,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+private val TAG = "FenyongViewModel"
 
 /**
  * 分佣页面 UI 状态
@@ -34,6 +37,7 @@ class FenyongViewModel : ViewModel() {
     private var dashboardJob: Job? = null
 
     init {
+        Log.d(TAG, "ViewModel init, token=${com.sillygirl.client.data.api.RetrofitClient.token?.take(8)}...")
         loadData()
         loadDashboard()
     }
@@ -42,6 +46,7 @@ class FenyongViewModel : ViewModel() {
      * 加载订单列表（带搜索和分页）
      */
     fun loadOrders(page: Int = 1) {
+        Log.d(TAG, "loadOrders: page=$page, keyword='${_uiState.value.keyword}'")
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -56,6 +61,7 @@ class FenyongViewModel : ViewModel() {
                 )
 
                 response.onSuccess { result ->
+                    Log.d(TAG, "Orders success: total=${result.total}, page=${result.page}, count=${result.data.size}")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         orders = result.data,
@@ -64,12 +70,14 @@ class FenyongViewModel : ViewModel() {
                         error = null,
                     )
                 }.onFailure { e ->
+                    Log.e(TAG, "Orders failed: ${e.message}", e)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = e.message ?: "加载订单失败",
                     )
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Orders exception", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "加载订单失败",
@@ -82,17 +90,21 @@ class FenyongViewModel : ViewModel() {
      * 加载 dashboard 数据
      */
     fun loadDashboard() {
+        Log.d(TAG, "loadDashboard called")
         dashboardJob?.cancel()
         dashboardJob = viewModelScope.launch {
             try {
                 val response = repository.getDashboard()
                 response.onSuccess { dashboard ->
+                    Log.d(TAG, "Dashboard loaded: success=${dashboard.success}, today=${dashboard.today}")
                     _uiState.value = _uiState.value.copy(
                         dashboard = dashboard,
                     )
+                }.onFailure { e ->
+                    Log.e(TAG, "Dashboard failed: ${e.message}", e)
                 }
             } catch (e: Exception) {
-                // Silent failure for dashboard
+                Log.e(TAG, "Dashboard exception", e)
             }
         }
     }
@@ -107,6 +119,7 @@ class FenyongViewModel : ViewModel() {
     }
 
     fun loadData() {
+        Log.d(TAG, "loadData called")
         loadDashboard()
         loadOrders(1)
     }

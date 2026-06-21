@@ -79,6 +79,7 @@ fun GlassCard(
     ) {
         Box(
             modifier = Modifier
+                .fillMaxSize()
                 .background(Color.White.copy(alpha = 0.95f), RoundedCornerShape(16.dp))
         ) {
             Content(modifier = Modifier.padding(16.dp), content = content)
@@ -88,7 +89,9 @@ fun GlassCard(
 
 @Composable
 private fun Content(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Modifier
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        content()
+    }
 }
 
 /**

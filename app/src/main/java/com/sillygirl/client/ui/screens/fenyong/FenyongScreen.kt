@@ -1,5 +1,6 @@
 package com.sillygirl.client.ui.screens.fenyong
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.ui.components.*
 import com.sillygirl.client.ui.theme.*
 import java.text.SimpleDateFormat
@@ -66,6 +68,13 @@ fun FenyongScreen(
     viewModel: FenyongViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    
+    // 调试信息：直接在页面上显示当前状态
+    val debugText = "isLoading=${uiState.isLoading}\nerror=${uiState.error}\ndashboard=${uiState.dashboard != null}\norders=${uiState.orders.size}\ntotal=${uiState.total}\npage=${uiState.page}\ntoken=${com.sillygirl.client.data.api.RetrofitClient.token?.take(8)}"
+    
+    LaunchedEffect(Unit) {
+        android.util.Log.d("FenyongScreen", "UI update: $debugText")
+    }
 
     Scaffold(
         topBar = {
@@ -114,6 +123,21 @@ fun FenyongScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(vertical = 12.dp),
                     ) {
+                        // 调试信息卡片
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text("🔧 调试信息", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(debugText, style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        }
+                        
                         // 1. 分佣概览大卡
                         uiState.dashboard?.let { dash ->
                             item {
