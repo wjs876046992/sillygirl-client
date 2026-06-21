@@ -27,14 +27,12 @@ jobs:
         with:
           cache-disabled: true
 
-      - name: Clean
-        run: ./gradlew clean --no-daemon
-
       - name: Build APK (debug)
         id: build
         continue-on-error: true
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          set -x
+          ./gradlew clean assembleDebug --no-daemon 2>&1 | tee build.log
 
       - name: Save build log
         if: always()
