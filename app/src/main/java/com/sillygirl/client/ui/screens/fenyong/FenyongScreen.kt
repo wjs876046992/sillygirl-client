@@ -144,12 +144,12 @@ fun FenyongScreen(
                                             }
                                         }
                                     },
-                                    modifier = Modifier.fillMaxWidth(0.58f),
+                                    modifier = Modifier.weight(0.58f),
                                 )
                                 FilledTonalButton(
                                     onClick = { viewModel.loadOrders(1) },
                                     shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.height(48.dp).fillMaxWidth(0.42f),
+                                    modifier = Modifier.height(48.dp).weight(0.42f),
                                 ) {
                                     Text("搜索")
                                 }
@@ -284,7 +284,7 @@ private fun PlatformRow(data: com.sillygirl.client.data.model.FenyongDashboardRe
             modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(getPlatformColor(code)),
         )
         Spacer(Modifier.width(8.dp))
-        Text(getPlatformName(code), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f), modifier = Modifier.fillMaxWidth(0.45f))
+        Text(getPlatformName(code), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f), modifier = Modifier.weight(0.45f))
         Text("${stat?.orders ?: 0}单", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
         Text("¥${formatMoney(stat?.estimate ?: 0.0)}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.White)
     }
@@ -320,7 +320,7 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
 
             // 信息
             Column(
-                modifier = Modifier.fillMaxWidth(0.65f),
+                modifier = Modifier.weight(0.65f),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
@@ -350,18 +350,28 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            AmountCell("订单", order.content.firstOrNull { it.label == "订单金额" }?.value?.toString() ?: "—", Color(0xFF333333))
-            AmountCell("预估", "¥${order.content.firstOrNull { it.label == "预估佣金" }?.value?.toString() ?: "0.00"}", MaterialTheme.colorScheme.primary)
-            AmountCell("实际", "¥${order.content.firstOrNull { it.label == "实际佣金" }?.value?.toString() ?: "0.00"}", SuccessColor)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("订单", style = MaterialTheme.typography.labelSmall, color = GrayText)
+                Text(order.content.firstOrNull { it.label == "订单金额" }?.value?.toString() ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color(0xFF333333))
+            }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("预估", style = MaterialTheme.typography.labelSmall, color = GrayText)
+                Text("¥${order.content.firstOrNull { it.label == "预估佣金" }?.value?.toString() ?: "0.00"}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("实际", style = MaterialTheme.typography.labelSmall, color = GrayText)
+                Text("¥${order.content.firstOrNull { it.label == "实际佣金" }?.value?.toString() ?: "0.00"}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = SuccessColor)
+            }
         }
-    }
-}
-
-@Composable
-private fun AmountCell(label: String, value: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth(0.33f)) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = GrayText)
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = color)
     }
 }
 
