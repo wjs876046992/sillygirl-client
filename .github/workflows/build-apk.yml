@@ -31,18 +31,18 @@ jobs:
       - name: Debug APK output
         if: always()
         run: |
-          echo "=== Checking APK output paths ==="
-          find app/build/outputs -name "*.apk" 2>/dev/null || echo "No APKs found"
-          ls -la app/build/outputs/ 2>/dev/null || echo "No outputs dir"
+          echo "=== Finding APK files ==="
+          find . -name "*.apk" 2>/dev/null
+          echo "=== build/outputs dir ==="
+          ls -la app/build/outputs/ 2>/dev/null || echo "No outputs"
+          echo "=== build/apk dir ==="
           ls -la app/build/outputs/apk/ 2>/dev/null || echo "No apk dir"
-          ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug dir"
-
-      - name: Show build log on failure
-        if: failure()
-        run: |
-          echo "::group::Full build log"
-          cat build.log
-          echo "::endgroup::"
+          echo "=== build/apk/debug dir ==="
+          ls -laR app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug dir"
+          echo "=== build/cleanBuildCache ==="
+          ls app/build/ 2>/dev/null || echo "No build dir"
+          echo "=== gradle tasks ==="
+          cat build.log | grep -i "apk\|assemble\|output\|BUILD" | head -30
 
       - name: Extract version from commit message
         id: version
