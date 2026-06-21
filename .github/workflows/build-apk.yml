@@ -28,22 +28,28 @@ jobs:
         run: |
           ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
 
-      - name: Check APK result
-        id: check
+      - name: Report APK status
         if: always()
         run: |
           APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          echo "=== APK PATH CHECK ==="
+          echo "Checking: $APK_PATH"
           if [ -f "$APK_PATH" ]; then
-            echo "apk_found=true" >> $GITHUB_OUTPUT
-            echo "OK: $(ls -lh "$APK_PATH" | awk '{print $5}')"
+            echo "✅ APK EXISTS"
+            ls -lh "$APK_PATH"
           else
-            echo "apk_found=false" >> $GITHUB_OUTPUT
-            echo "No APK at $APK_PATH"
-            ls app/build/outputs/ 2>/dev/null || echo "No outputs dir"
-            tail -30 build.log 2>/dev/null || echo "No log"
+            echo "❌ APK NOT FOUND"
+            echo "=== build/ directory tree ==="
+            find app/build -name "*.apk" 2>/dev/null || echo "No APK files found anywhere in build/"
+            echo "=== outputs dir ==="
+            ls -la app/build/outputs/ 2>/dev/null || echo "No outputs"
+            echo "=== gradle tasks ==="
+            ./gradlew tasks --all --no-daemon 2>/dev/null | grep -i "assemble" | head -10 || true
+            echo "=== build.log tail ==="
+            tail -20 build.log 2>/dev/null || echo "No log"
           fi
 
-      - name: Upload build-log on failure
+      - name: Upload build-log
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -51,12 +57,21 @@ jobs:
           path: build.log
           retention-days: 7
 
-      - name: Upload APK as Release
-        if: steps.check.outputs.apk_found == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: apk-${{ github.sha }}
-          files: app/build/outputs/apk/debug/app-debug.apk
-          prerelease: true
+      - name: Create Release from APK
+        id: release
+        if: success()
+        run: |
+          APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          if [ -f "$APK_PATH" ]; then
+            gh release create apk-${{ github.sha }} \
+              --title "APK Build ${{ github.run_number }}" \
+              --prerelease \
+              --notes "Auto-built from ${{ github.sha }}" \
+              "$APK_PATH"
+            echo "✅ Release created"
+          else
+            echo "❌ No APK to release"
+            exit 1
+          fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: *** secrets.GITHUB_TOKEN }}
