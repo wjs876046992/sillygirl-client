@@ -35,16 +35,14 @@ jobs:
           echo "=== APK PATH CHECK ==="
           echo "Checking: $APK_PATH"
           if [ -f "$APK_PATH" ]; then
-            echo "✅ APK EXISTS"
+            echo "APK EXISTS"
             ls -lh "$APK_PATH"
           else
-            echo "❌ APK NOT FOUND"
+            echo "APK NOT FOUND"
             echo "=== build/ directory tree ==="
             find app/build -name "*.apk" 2>/dev/null || echo "No APK files found anywhere in build/"
             echo "=== outputs dir ==="
             ls -la app/build/outputs/ 2>/dev/null || echo "No outputs"
-            echo "=== gradle tasks ==="
-            ./gradlew tasks --all --no-daemon 2>/dev/null | grep -i "assemble" | head -10 || true
             echo "=== build.log tail ==="
             tail -20 build.log 2>/dev/null || echo "No log"
           fi
@@ -68,10 +66,10 @@ jobs:
               --prerelease \
               --notes "Auto-built from ${{ github.sha }}" \
               "$APK_PATH"
-            echo "✅ Release created"
+            echo "Release created"
           else
-            echo "❌ No APK to release"
+            echo "No APK to release"
             exit 1
           fi
         env:
-          GITHUB_TOKEN: *** secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
