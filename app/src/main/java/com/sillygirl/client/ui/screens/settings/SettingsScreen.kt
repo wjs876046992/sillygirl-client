@@ -1,6 +1,6 @@
 package com.sillygirl.client.ui.screens.settings
-import com.sillygirl.client.ui.components.weight_
 
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -113,7 +113,7 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(Modifier.weight_(1f))
+            Spacer(Modifier.weight(1f))
 
             Button(
                 onClick = { showLogoutDialog = true },

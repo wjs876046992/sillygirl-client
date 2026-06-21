@@ -1,7 +1,7 @@
 package com.sillygirl.client.ui.screens.serverlist
-import com.sillygirl.client.ui.components.weight_
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -168,7 +168,7 @@ fun ServerListItem(
                 modifier = Modifier.size(24.dp),
             )
             Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight_(1f)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     server.displayName,
                     style = MaterialTheme.typography.titleMedium,

@@ -1,6 +1,6 @@
 package com.sillygirl.client.ui.screens.storage
-import com.sillygirl.client.ui.components.weight_
 
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -116,7 +116,7 @@ fun StorageScreen(
                     onValueChange = { keyInput = it },
                     label = { Text("输入 Key") },
                     singleLine = true,
-                    modifier = Modifier.weight_(1f),
+                    modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                 )
                 FilledTonalButton(

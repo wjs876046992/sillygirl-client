@@ -1,8 +1,8 @@
 package com.sillygirl.client.ui.screens.tasks
-import com.sillygirl.client.ui.components.weight_
 
 import android.icu.text.SimpleDateFormat
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -153,7 +153,7 @@ private fun TaskItemCard(task: TaskInfo, onToggle: () -> Unit, onRun: () -> Unit
                     }
                 }
                 Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight_(1f)) {
+                Column(Modifier.weight(1f)) {
                     Text(task.title.ifBlank { task.taskId }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     Text(task.schedule, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

@@ -1,8 +1,8 @@
 package com.sillygirl.client.ui.screens.dashboard
-import com.sillygirl.client.ui.components.weight_
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -92,7 +92,7 @@ fun DashboardScreen(
 
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatNumberCard(
-                        Modifier.weight_(1f),
+                        Modifier.weight(1f),
                         icon = Icons.Filled.Extension,
                         iconColor = Color(0xFF667EEA),
                         value = "${uiState.installedPlugins}",
@@ -100,7 +100,7 @@ fun DashboardScreen(
                         onClick = onNavigateToMyPlugins,
                     )
                     StatNumberCard(
-                        Modifier.weight_(1f),
+                        Modifier.weight(1f),
                         icon = Icons.Filled.People,
                         iconColor = Color(0xFF52C41A),
                         value = "${uiState.masterCount}",
@@ -110,7 +110,7 @@ fun DashboardScreen(
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatNumberCard(
-                        Modifier.weight_(1f),
+                        Modifier.weight(1f),
                         icon = Icons.Filled.Schedule,
                         iconColor = Color(0xFFF59E0B),
                         value = "${uiState.activeTaskCount}",
@@ -135,7 +135,7 @@ fun DashboardScreen(
                                 Text("💰", fontSize = 22.sp)
                             }
                             Spacer(Modifier.width(14.dp))
-                            Column(Modifier.weight_(1f)) {
+                            Column(Modifier.weight(1f)) {
                                 Text("分佣概览", fontWeight = FontWeight.Bold)
                                 Text("今日收入 ¥${feyMoney(dash.today.actual)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                             }
@@ -224,9 +224,9 @@ private fun QuickActionGrid(
             for (j in 0 until 3) {
                 val idx = i + j
                 if (idx < actions.size) {
-                    QuickActionItem(actions[idx], Modifier.weight_(1f))
+                    QuickActionItem(actions[idx], Modifier.weight(1f))
                 } else {
-                    Spacer(Modifier.weight_(1f))
+                    Spacer(Modifier.weight(1f))
                 }
             }
         }

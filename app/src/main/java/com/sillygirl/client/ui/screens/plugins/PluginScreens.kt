@@ -1,6 +1,6 @@
 package com.sillygirl.client.ui.screens.plugins
-import com.sillygirl.client.ui.components.weight_
 
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -129,7 +129,7 @@ private fun MyPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo, onT
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight_(1f)) {
+            Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(plugin.title.ifBlank { plugin.id }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.width(6.dp))
@@ -162,7 +162,7 @@ private fun MarketPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo,
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight_(1f)) {
+            Column(Modifier.weight(1f)) {
                 Text(plugin.title.ifBlank { plugin.id }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 if (plugin.description.isNotBlank()) {
                     Text(plugin.description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)

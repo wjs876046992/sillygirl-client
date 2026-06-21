@@ -1,6 +1,6 @@
 package com.sillygirl.client.ui.screens.masters
-import com.sillygirl.client.ui.components.weight_
 
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -143,7 +143,7 @@ private fun MasterCard(master: MasterInfo, onRemove: () -> Unit) {
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight_(1f)) {
+            Column(Modifier.weight(1f)) {
                 Text(master.nickname.ifBlank { master.number }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 Text("${master.platform} · ${master.number}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
