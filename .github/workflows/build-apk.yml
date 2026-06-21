@@ -32,3 +32,17 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+      - name: Create Release
+        if: success()
+        run: |
+          APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          if [ -f "$APK_PATH" ]; then
+            gh release create apk-${{ github.sha }} \
+              --title "APK Build ${{ github.run_number }}" \
+              --prerelease \
+              --notes "Built from ${{ github.sha }}" \
+              "$APK_PATH"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
