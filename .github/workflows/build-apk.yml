@@ -24,31 +24,26 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: true
+
+      - name: Clean build
+        run: ./gradlew clean --no-daemon
 
       - name: Build APK (debug)
-        run: ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
+        run: ./gradlew assembleDebug --no-daemon
 
-      - name: Debug APK output
+      - name: Find APK
         if: always()
         run: |
           echo "=== Finding APK files ==="
-          find . -name "*.apk" 2>/dev/null
-          echo "=== build/outputs dir ==="
-          ls -la app/build/outputs/ 2>/dev/null || echo "No outputs"
-          echo "=== build/apk dir ==="
-          ls -la app/build/outputs/apk/ 2>/dev/null || echo "No apk dir"
-          echo "=== build/apk/debug dir ==="
-          ls -laR app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug dir"
-          echo "=== build/cleanBuildCache ==="
-          ls app/build/ 2>/dev/null || echo "No build dir"
-          echo "=== gradle tasks ==="
-          cat build.log | grep -i "apk\|assemble\|output\|BUILD" | head -30
+          find . -name "*.apk" 2>/dev/null || echo "None"
+          ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "No APK dir"
 
       - name: Extract version from commit message
         id: version
         run: |
           VERSION=$(echo "${{ github.event.head_commit.message }}" | head -1 | sed 's/[^a-zA-Z0-9._-]/_/g')
-          # Fallback to short sha
           if [ -z "$VERSION" ]; then
             VERSION=$(git rev-parse --short HEAD)
           fi
