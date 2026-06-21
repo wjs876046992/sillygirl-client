@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -131,7 +132,7 @@ private fun TaskItemCard(task: TaskInfo, onToggle: () -> Unit, onRun: () -> Unit
                     Box(
                         modifier = Modifier.size(24.dp)
                             .clip(RoundedCornerShape(6.dp))
-                            .background(if (task.enable) SuccessColor.copy(alpha = 0.15f) else DangerColor.copy(alpha = 0.15f))),
+                            .background(if (task.enable) SuccessColor.copy(alpha = 0.15f) else DangerColor.copy(alpha = 0.15f)),
                     ) {
                         Icon(
                             Icons.Filled.PlayArrow, null,

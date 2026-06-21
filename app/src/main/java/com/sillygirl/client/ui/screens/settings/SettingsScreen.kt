@@ -38,7 +38,7 @@ fun SettingsScreen(
             title = { Text("退出登录") },
             text = { Text("确定要退出登录吗？需要重新选择服务器并登录。") },
             confirmButton = {
-                FilledButton(
+                FilledTonalButton(
                     onClick = { showLogoutDialog = false; viewModel.logout(onLogout) },
                     shape = RoundedCornerShape(12.dp),
                 ) { Text("确定") }
@@ -104,12 +104,12 @@ fun SettingsScreen(
 
             Spacer(Modifier.weight(1f))
 
-            FilledButton(
+            Button(
                 onClick = { showLogoutDialog = true },
                 enabled = !uiState.isLoggingOut,
                 modifier = Modifier.fillMaxWidth().height(50.dp).shadow(6.dp, RoundedCornerShape(14.dp)),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.filledButtonColors(containerColor = DangerColor),
+                colors = ButtonDefaults.buttonColors(containerColor = DangerColor),
             ) {
                 Icon(Icons.Filled.Logout, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))

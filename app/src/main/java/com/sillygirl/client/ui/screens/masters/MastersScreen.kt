@@ -22,6 +22,11 @@ import com.sillygirl.client.data.model.MasterInfo
 import com.sillygirl.client.data.repository.MasterRepository
 import com.sillygirl.client.ui.components.GlassCard
 import com.sillygirl.client.ui.theme.DangerColor
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 data class MastersUiState(
     val isLoading: Boolean = true,
@@ -36,22 +41,27 @@ class MastersViewModel : ViewModel() {
     val ui: StateFlow<MastersUiState> = _ui.asStateFlow()
 
     init { load() }
-    fun load() { viewModelScope.launch {
-        _ui.value = MastersUiState(isLoading = true)
-        repo.getMasters().fold(
-            onSuccess = { r -> _ui.value = MastersUiState(masters = r, platforms = emptyList()) },
-            onFailure = { _ui.value = MastersUiState(isLoading = false, error = it.message) }
-        )
-    }}
-
-    fun removeMaster(master: MasterInfo) { viewModelScope.launch {
-        try {
-            RetrofitClient.api.delMaster(mapOf("id" to "${master.id}"))
-            load()
-        } catch (e: Exception) {
-            _ui.value = _ui.value.copy(error = "移除失败：${e.message}")
+    fun load() {
+        viewModelScope.launch {
+            _ui.value = MastersUiState(isLoading = true)
+            val result = repo.getMasters()
+            result.fold(
+                onSuccess = { r -> _ui.value = _ui.value.copy(masters = r, platforms = emptyList()) },
+                onFailure = { e -> _ui.value = _ui.value.copy(isLoading = false, error = e.message) }
+            )
         }
-    }}
+    }
+
+    fun removeMaster(master: MasterInfo) {
+        viewModelScope.launch {
+            try {
+                RetrofitClient.api.delMaster(mapOf("id" to "${master.id}"))
+                load()
+            } catch (e: Exception) {
+                _ui.value = _ui.value.copy(error = "移除失败：${e.message}")
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,7 +121,6 @@ fun MastersScreen(
 private fun MasterCard(master: MasterInfo, onRemove: () -> Unit) {
     GlassCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            // Platform icon
             Box(
                 modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
@@ -150,11 +159,11 @@ private fun AddMasterDialog(onDismiss: () -> Unit, onAdded: () -> Unit) {
             }
         },
         confirmButton = {
-            FilledButton(
+            TextButton(
                 onClick = {
-                    if (platform.isBlank() || number.isBlank()) return@FilledButton
+                    if (platform.isBlank() || number.isBlank()) return@TextButton
                     loading = true
-                    androidx.lifecycle.viewModelScope.launch {
+                    viewModelScope.launch {
                         try {
                             RetrofitClient.api.addMaster(mapOf("platform" to platform, "number" to number))
                             onAdded()
@@ -162,13 +171,12 @@ private fun AddMasterDialog(onDismiss: () -> Unit, onAdded: () -> Unit) {
                     }
                 },
                 enabled = !loading,
-                shape = RoundedCornerShape(12.dp),
             ) {
                 Text(if (loading) "添加中..." else "添加")
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp)) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text("取消") }
         },
     )
 }

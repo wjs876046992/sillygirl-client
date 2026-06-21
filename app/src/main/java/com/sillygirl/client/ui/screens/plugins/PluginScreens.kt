@@ -159,7 +159,7 @@ private fun MarketPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo,
                 }
                 Text("${plugin.author} · ${plugin.downloads}次下载 · v${plugin.version}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            FilledButton(
+            FilledTonalButton(
                 onClick = onInstall,
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.height(34.dp),

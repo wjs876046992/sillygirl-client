@@ -98,7 +98,7 @@ fun StorageScreen(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                 )
-                FilledButton(
+                FilledTonalButton(
                     onClick = {
                         if (keyInput.isNotBlank()) viewModel.loadValue(keyInput.trim())
                     },
@@ -127,9 +127,9 @@ fun StorageScreen(
                         )
                         Spacer(Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilledButton(
+                            FilledTonalButton(
                                 onClick = {
-                                    val k = ui.selectedKey ?: return@FilledButton
+                                    val k = ui.selectedKey ?: return@FilledTonalButton
                                     viewModel.saveValue(k, valueInput.ifBlank { ui.selectedValue!! })
                                 },
                                 shape = RoundedCornerShape(10.dp),
