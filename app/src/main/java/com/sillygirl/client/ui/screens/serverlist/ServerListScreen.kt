@@ -157,7 +157,7 @@ fun ServerListItem(
                 modifier = Modifier.size(24.dp),
             )
             Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     server.displayName,
                     style = MaterialTheme.typography.titleMedium,

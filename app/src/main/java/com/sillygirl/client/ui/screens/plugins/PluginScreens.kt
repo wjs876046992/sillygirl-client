@@ -118,7 +118,7 @@ private fun MyPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo, onT
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(plugin.title.ifBlank { plugin.id }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.width(6.dp))
@@ -151,7 +151,7 @@ private fun MarketPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo,
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.fillMaxWidth()) {
                 Text(plugin.title.ifBlank { plugin.id }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 if (plugin.description.isNotBlank()) {
                     Text(plugin.description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)

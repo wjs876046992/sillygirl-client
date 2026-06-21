@@ -170,7 +170,7 @@ fun ListItemCard(
                 Spacer(Modifier.width(12.dp))
             }
 
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.fillMaxWidth()) {
                 Text(
                     title,
                     style = MaterialTheme.typography.bodyMedium,

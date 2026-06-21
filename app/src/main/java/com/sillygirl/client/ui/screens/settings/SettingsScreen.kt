@@ -102,7 +102,7 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.fillMaxWidth())
 
             Button(
                 onClick = { showLogoutDialog = true },

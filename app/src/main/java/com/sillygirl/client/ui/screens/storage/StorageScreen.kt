@@ -42,7 +42,7 @@ class StorageViewModel : ViewModel() {
             try {
                 val resp = RetrofitClient.api.getStorage("__keys__")
                 if (resp.success) {
-                    _ui.value = StorageUiState(keys = (resp.data as? List<*>)?.map { it?.toString() } ?: emptyList(), error = null)
+                    _ui.value = StorageUiState(keys = (resp.data as? Iterable<*>)?.toList()?.map { it?.toString() } ?: emptyList(), error = null)
                 } else {
                     _ui.value = StorageUiState(isLoading = false, error = resp.errorMessage ?: "加载失败")
                 }
@@ -106,7 +106,7 @@ fun StorageScreen(
                     onValueChange = { keyInput = it },
                     label = { Text("输入 Key") },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                 )
                 FilledTonalButton(

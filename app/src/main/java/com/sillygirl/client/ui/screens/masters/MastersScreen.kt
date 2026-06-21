@@ -132,7 +132,7 @@ private fun MasterCard(master: MasterInfo, onRemove: () -> Unit) {
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.fillMaxWidth()) {
                 Text(master.nickname.ifBlank { master.number }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 Text("${master.platform} · ${master.number}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

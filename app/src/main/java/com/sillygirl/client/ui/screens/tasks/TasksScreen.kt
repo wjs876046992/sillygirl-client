@@ -142,7 +142,7 @@ private fun TaskItemCard(task: TaskInfo, onToggle: () -> Unit, onRun: () -> Unit
                     }
                 }
                 Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
+                Column(Modifier.fillMaxWidth()) {
                     Text(task.title.ifBlank { task.taskId }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     Text(task.schedule, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
