@@ -35,34 +35,44 @@ class StorageViewModel : ViewModel() {
     private val _ui = MutableStateFlow(StorageUiState())
     val ui: StateFlow<StorageUiState> = _ui.asStateFlow()
 
-    fun loadKeys() { viewModelScope.launch {
-        _ui.value = StorageUiState(isLoading = true)
-        try {
-            val resp = RetrofitClient.api.getStorage("__keys__")
-            _ui.value = StorageUiState(keys = emptyList(), error = if (resp.success) null else "加载失败")
-        } catch (e: Exception) {
-            _ui.value = StorageUiState(isLoading = false, error = "加载失败: ${e.message}")
+    fun loadKeys() {
+        viewModelScope.launch {
+            _ui.value = StorageUiState(isLoading = true)
+            try {
+                val resp = RetrofitClient.api.getStorage("__keys__")
+                if (resp.success) {
+                    _ui.value = StorageUiState(keys = resp.data?.toList() ?: emptyList(), error = null)
+                } else {
+                    _ui.value = StorageUiState(isLoading = false, error = resp.errorMessage ?: "加载失败")
+                }
+            } catch (e: Exception) {
+                _ui.value = StorageUiState(isLoading = false, error = "加载失败: ${e.message}")
+            }
         }
-    }}
+    }
 
-    fun loadValue(key: String) { viewModelScope.launch {
-        try {
-            val resp = RetrofitClient.api.getStorage(key)
-            val value = if (resp.success) Gson().toJson(resp.data) else resp.errorMessage ?: "无数据"
-            _ui.value = _ui.value.copy(selectedKey = key, selectedValue = value)
-        } catch (e: Exception) {
-            _ui.value = _ui.value.copy(error = "加载失败: ${e.message}")
+    fun loadValue(key: String) {
+        viewModelScope.launch {
+            try {
+                val resp = RetrofitClient.api.getStorage(key)
+                val value = if (resp.success) Gson().toJson(resp.data) else resp.errorMessage ?: "无数据"
+                _ui.value = _ui.value.copy(selectedKey = key, selectedValue = value, isLoading = false)
+            } catch (e: Exception) {
+                _ui.value = _ui.value.copy(error = "加载失败: ${e.message}")
+            }
         }
-    }}
+    }
 
-    fun saveValue(key: String, value: String) { viewModelScope.launch {
-        try {
-            RetrofitClient.api.saveStorage(key, mapOf("value" to value))
-            _ui.value = _ui.value.copy(selectedKey = null, selectedValue = null)
-        } catch (e: Exception) {
-            _ui.value = _ui.value.copy(error = "保存失败: ${e.message}")
+    fun saveValue(key: String, value: String) {
+        viewModelScope.launch {
+            try {
+                RetrofitClient.api.saveStorage(key, mapOf("value" to value))
+                _ui.value = _ui.value.copy(selectedKey = null, selectedValue = null, error = null)
+            } catch (e: Exception) {
+                _ui.value = _ui.value.copy(error = "保存失败: ${e.message}")
+            }
         }
-    }}
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -116,7 +126,7 @@ fun StorageScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 ) {
                     Column(Modifier.padding(16.dp)) {
-                        Text("${ui.selectedKey}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(ui.selectedKey ?: "unknown", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             value = valueInput.ifBlank { ui.selectedValue!! },
