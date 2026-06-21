@@ -1,25 +1,30 @@
 package com.sillygirl.client.ui.screens.login
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sillygirl.client.LocalServerConfig
 import com.sillygirl.client.ui.screens.login.LoginViewModelFactory
+import com.sillygirl.client.ui.theme.PrimaryGradientColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,33 +39,60 @@ fun LoginScreen(
         if (uiState.isLoggedIn) onLoginSuccess()
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFFF8F9FC), Color(0xFFEEF0F6))))
     ) {
+        // 顶部渐变装饰
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.6f)
+                .align(Alignment.TopCenter)
+                .offset(y = (-40).dp)
+                .size(280.dp)
+                .clip(RoundedCornerShape(50))
+                .background(Brush.horizontalGradient(PrimaryGradientColors))
+                .shadow(40.dp, RoundedCornerShape(50)),
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(32.dp),
+                .padding(horizontal = 24.dp)
+                .padding(top = 100.dp, bottom = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
+            // Logo / App name
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("🤖", fontSize = 36.sp)
+            }
+
+            Spacer(Modifier.height(20.dp))
+
             Text(
-                text = "SillyGirl 客户端",
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
+                "SillyGirl",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             Text(
-                text = "登录管理你的傻妞机器人",
+                "管理你的傻妞机器人",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(Modifier.height(36.dp))
 
+            // Server URL
             OutlinedTextField(
                 value = uiState.serverUrl,
                 onValueChange = viewModel::updateServerUrl,
@@ -73,10 +105,12 @@ fun LoginScreen(
                     imeAction = ImeAction.Next,
                 ),
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
+            // Username
             OutlinedTextField(
                 value = uiState.username,
                 onValueChange = viewModel::updateUsername,
@@ -85,15 +119,17 @@ fun LoginScreen(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
+            // Password
             OutlinedTextField(
                 value = uiState.password,
                 onValueChange = viewModel::updatePassword,
                 label = { Text("密码") },
-                leadingIcon = { Icon(Icons.Filled.Person, null) },
+                leadingIcon = { Icon(Icons.Filled.Lock, null) },
                 trailingIcon = {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
@@ -111,33 +147,48 @@ fun LoginScreen(
                     imeAction = ImeAction.Done,
                 ),
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
             )
 
             if (uiState.error != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = uiState.error!!,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Spacer(Modifier.height(12.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Text(
+                        "⚠ ${uiState.error}",
+                        modifier = Modifier.padding(10.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
 
+            // Login button
             Button(
                 onClick = viewModel::login,
                 enabled = !uiState.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(52.dp)
+                    .shadow(8.dp, RoundedCornerShape(14.dp)),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                ),
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(22.dp),
+                        color = Color.White,
                     )
                 } else {
-                    Text("登 录", style = MaterialTheme.typography.titleMedium)
+                    Text("登 录", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                 }
             }
         }
