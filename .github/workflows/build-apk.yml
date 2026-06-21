@@ -22,29 +22,28 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
       - name: Build APK (debug)
         id: build
         continue-on-error: true
         run: |
           ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
 
-      - name: Check result
+      - name: Check APK result
+        id: check
         if: always()
         run: |
-          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
-            echo "✅ APK found"
-            ls -la app/build/outputs/apk/debug/app-debug.apk
+          APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          if [ -f "$APK_PATH" ]; then
+            echo "apk_found=true" >> $GITHUB_OUTPUT
+            echo "OK: $(ls -lh "$APK_PATH" | awk '{print $5}')"
           else
-            echo "❌ APK NOT found"
+            echo "apk_found=false" >> $GITHUB_OUTPUT
+            echo "No APK at $APK_PATH"
             ls app/build/outputs/ 2>/dev/null || echo "No outputs dir"
-            echo "=== Last 30 lines of build.log ==="
             tail -30 build.log 2>/dev/null || echo "No log"
           fi
 
-      - name: Save build log
+      - name: Upload build-log on failure
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -53,10 +52,11 @@ jobs:
           retention-days: 7
 
       - name: Upload APK as Release
+        if: steps.check.outputs.apk_found == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: apk-${{ github.sha }}
           files: app/build/outputs/apk/debug/app-debug.apk
           prerelease: true
         env:
-          GITHUB_TOKEN: *** secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
