@@ -2,7 +2,18 @@ package com.sillygirl.client.ui.screens.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -77,10 +88,8 @@ fun DashboardScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // ===== 欢迎卡片 =====
                 WelcomeHeader(name = uiState.userName)
 
-                // ===== 统计行 =====
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatNumberCard(
                         Modifier.weight(1f),
@@ -110,7 +119,6 @@ fun DashboardScreen(
                     )
                 }
 
-                // ===== 分佣概览 =====
                 uiState.fenyongDashboard?.let { dash ->
                     GlassCard(
                         onClick = onNavigateToFenyong,
@@ -133,7 +141,6 @@ fun DashboardScreen(
                             }
                             Text(">", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        // Mini stats
                         Spacer(Modifier.height(12.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                             MiniStat("已结算", "¥${feyMoney(dash.totalSettled)}")
@@ -142,7 +149,6 @@ fun DashboardScreen(
                     }
                 }
 
-                // ===== 快捷入口 =====
                 QuickActionGrid(
                     onNavigateToFenyong, onNavigateToPluginMarket, onNavigateToStorage,
                     onNavigateToService, onNavigateToMasters, onNavigateToTasks,
@@ -178,7 +184,6 @@ private fun WelcomeHeader(name: String) {
                 .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(20.dp))
                 .padding(24.dp)
         ) {
-            // 背景装饰
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -186,7 +191,6 @@ private fun WelcomeHeader(name: String) {
                     .clip(RoundedCornerShape(50.dp))
                     .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(50.dp)),
             )
-
             Column {
                 Text("欢迎回来 👋", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
                 Spacer(Modifier.height(4.dp))
