@@ -22,7 +22,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sillygirl.client.ui.components.*
-import com.sillygirl.client.ui.theme.*
+import androidx.compose.ui.graphics.Color
+import com.sillygirl.client.ui.theme.* 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

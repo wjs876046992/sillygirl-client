@@ -25,7 +25,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.sillygirl.client.ui.components.*
-import com.sillygirl.client.ui.theme.*
+import androidx.compose.ui.graphics.Color
+import com.sillygirl.client.ui.theme.* 
 import java.text.SimpleDateFormat
 import java.util.*
 

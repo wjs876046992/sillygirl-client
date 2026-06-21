@@ -26,7 +26,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sillygirl.client.LocalServerConfig
 import com.sillygirl.client.ui.theme.PrimaryGradientColors
 import com.sillygirl.client.ui.screens.login.LoginViewModelFactory
-import com.sillygirl.client.ui.theme.PrimaryGradientColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
