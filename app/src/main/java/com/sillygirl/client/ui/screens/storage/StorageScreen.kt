@@ -1,4 +1,5 @@
 package com.sillygirl.client.ui.screens.storage
+import com.sillygirl.client.ui.components.weight_
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -116,7 +116,7 @@ fun StorageScreen(
                     onValueChange = { keyInput = it },
                     label = { Text("输入 Key") },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight_(1f),
                     shape = RoundedCornerShape(12.dp),
                 )
                 FilledTonalButton(

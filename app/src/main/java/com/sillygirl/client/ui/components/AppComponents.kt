@@ -1,4 +1,5 @@
 package com.sillygirl.client.ui.components
+import com.sillygirl.client.ui.components.weight_
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -181,7 +181,7 @@ fun ListItemCard(
                 Spacer(Modifier.width(12.dp))
             }
 
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight_(1f)) {
                 Text(
                     title,
                     style = MaterialTheme.typography.bodyMedium,
