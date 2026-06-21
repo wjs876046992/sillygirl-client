@@ -42,7 +42,7 @@ class StorageViewModel : ViewModel() {
             try {
                 val resp = RetrofitClient.api.getStorage("__keys__")
                 if (resp.success) {
-                    _ui.value = StorageUiState(keys = resp.data?.toList() ?: emptyList(), error = null)
+                    _ui.value = StorageUiState(keys = (resp.data as? Map<*, *>)?.keys?.toList() ?: emptyList() ?: emptyList(), error = null)
                 } else {
                     _ui.value = StorageUiState(isLoading = false, error = resp.errorMessage ?: "加载失败")
                 }

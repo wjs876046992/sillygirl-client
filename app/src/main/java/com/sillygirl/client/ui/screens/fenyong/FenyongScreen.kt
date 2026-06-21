@@ -1,6 +1,10 @@
 package com.sillygirl.client.ui.screens.fenyong
 
 import androidx.compose.foundation.layout.*
+
+// Helper to avoid internal weight val conflict
+private fun Modifier._weight(p: Float) = androidx.compose.foundation.layout.weight(this, p)
+
 import androidx.compose.foundation.background
 
 import androidx.compose.foundation.lazy.LazyColumn
@@ -132,7 +136,7 @@ fun FenyongScreen(
                                     value = uiState.keyword,
                                     onValueChange = viewModel::setKeyword,
                                     placeholder = { Text("搜索SKU/订单号") },
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier._weight(1f),
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
@@ -284,7 +288,7 @@ private fun PlatformRow(data: com.sillygirl.client.data.model.FenyongDashboardRe
             modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(getPlatformColor(code)),
         )
         Spacer(Modifier.width(8.dp))
-        Text(getPlatformName(code), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f), modifier = Modifier.weight(1f))
+        Text(getPlatformName(code), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f), modifier = Modifier._weight(1f))
         Text("${stat?.orders ?: 0}单", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
         Text("¥${formatMoney(stat?.estimate ?: 0.0)}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.White)
     }
@@ -320,7 +324,7 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
 
             // 信息
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier._weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
@@ -359,7 +363,7 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
 
 @Composable
 private fun AmountCell(label: String, value: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier._weight(1f)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = GrayText)
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = color)
     }

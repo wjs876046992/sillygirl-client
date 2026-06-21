@@ -60,7 +60,7 @@ fun ServerListScreen(
             when {
                 uiState.servers.isEmpty() -> {
                     Box(
-                        modifier = Modifier.fillMaxWidth().weight_(1f),
+                        modifier = Modifier.fillMaxWidth().weight(1f),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
