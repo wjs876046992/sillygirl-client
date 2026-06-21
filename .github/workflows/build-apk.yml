@@ -1,4 +1,4 @@
-name: Build Native APK
+name: Build APK
 
 on:
   push:
@@ -13,63 +13,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
 
-      - name: Build APK (debug)
-        id: build
-        continue-on-error: true
-        run: |
-          ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
 
-      - name: Report APK status
-        if: always()
-        run: |
-          APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
-          echo "=== APK PATH CHECK ==="
-          echo "Checking: $APK_PATH"
-          if [ -f "$APK_PATH" ]; then
-            echo "APK EXISTS"
-            ls -lh "$APK_PATH"
-          else
-            echo "APK NOT FOUND"
-            echo "=== build/ directory tree ==="
-            find app/build -name "*.apk" 2>/dev/null || echo "No APK files found anywhere in build/"
-            echo "=== outputs dir ==="
-            ls -la app/build/outputs/ 2>/dev/null || echo "No outputs"
-            echo "=== build.log tail ==="
-            tail -20 build.log 2>/dev/null || echo "No log"
-          fi
-
-      - name: Upload build-log
-        if: always()
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-log
-          path: build.log
-          retention-days: 7
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
 
-      - name: Create Release from APK
-        id: release
-        if: success()
-        run: |
-          APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
-          if [ -f "$APK_PATH" ]; then
-            gh release create apk-${{ github.sha }} \
-              --title "APK Build ${{ github.run_number }}" \
-              --prerelease \
-              --notes "Auto-built from ${{ github.sha }}" \
-              "$APK_PATH"
-            echo "Release created"
-          else
-            echo "No APK to release"
-            exit 1
-          fi
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.sha }}
+          files: app/build/outputs/apk/debug/app-debug.apk
+          prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
