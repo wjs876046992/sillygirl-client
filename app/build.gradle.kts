@@ -41,8 +41,8 @@ android {
 }
 
 dependencies {
-    // Compose BOM
-    val composeBom = platform("androidx.compose:compose-bom:2025.05.01")
+    // Compose BOM — downgraded to stable 2024.09.00 to fix weight internal val conflict
+    val composeBom = platform("androidx.compose:compose-bom:2024.09.00")
     implementation(composeBom)
 
     // Compose
