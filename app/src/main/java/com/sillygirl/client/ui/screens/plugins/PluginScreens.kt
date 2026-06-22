@@ -44,7 +44,7 @@ fun MyPluginsScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(it) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { p ->
         when {
             uiState.isLoading -> Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -94,7 +94,7 @@ fun PluginMarketScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(it) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { p ->
         when {
             uiState.isLoading -> Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }

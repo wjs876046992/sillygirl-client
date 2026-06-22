@@ -61,6 +61,7 @@ data class PluginMarketUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val plugins: List<PluginInfo> = emptyList(),
+    val snackbarMessage: String? = null,
 )
 
 class PluginMarketViewModel : ViewModel() {

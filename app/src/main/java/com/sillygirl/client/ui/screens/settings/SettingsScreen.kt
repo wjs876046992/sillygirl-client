@@ -67,7 +67,7 @@ fun SettingsScreen(
             TopAppBar(title = { Text("设置") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } })
         },
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(it) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
             modifier = Modifier

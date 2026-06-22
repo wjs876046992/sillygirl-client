@@ -99,8 +99,6 @@ fun StorageScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(it) },
-    ) { p ->
         topBar = {
             TopAppBar(
                 title = { Text("存储管理") },
@@ -109,7 +107,8 @@ fun StorageScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
-    ) { p ->
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+    ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(p).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

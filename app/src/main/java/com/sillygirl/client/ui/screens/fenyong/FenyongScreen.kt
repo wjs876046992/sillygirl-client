@@ -91,7 +91,7 @@ fun FenyongScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(it) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding),

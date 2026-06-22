@@ -112,7 +112,7 @@ fun TasksScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(it) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { p ->
         when {
             ui.isLoading -> Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
