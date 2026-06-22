@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -115,38 +116,49 @@ fun DashboardScreen(
                         onClick = onNavigateToFenyong,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // 顶部：标题 + 箭头
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center,
+                        Column {
+                            // 顶部：标题 + 箭头
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text("💰", fontSize = 18.sp)
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(12.dp)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text("💰", fontSize = 18.sp)
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text("分佣系统", fontWeight = FontWeight.Bold)
+                                    Text(
+                                        "今日 ¥${feyMoney(dash.today.estimate)} · 7天 ¥${feyMoney(dash.last7days.estimate)}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text("分佣系统", fontWeight = FontWeight.Bold)
-                                Text("今日收入 ¥${feyMoney(dash.today.actual)} · 总订单 ${feyInt(dash.totalOrders)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.height(12.dp))
+
+                            // 三列统计：一行三个
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                MiniStat("今日", "¥${feyMoney(dash.today.estimate)}")
+                                MiniStat("7天", "¥${feyMoney(dash.last7days.estimate)}")
+                                MiniStat("本月", "¥${feyMoney(dash.lastMonth.estimate)}")
                             }
-                            Text(">", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Spacer(Modifier.height(12.dp))
+                            Spacer(Modifier.height(8.dp))
 
-                        // 顶部统计数字行（3列）
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            MiniStat("今日", "¥${feyMoney(dash.today.estimate)}")
-                            MiniStat("7天", "¥${feyMoney(dash.last7days.estimate)}")
-                            MiniStat("本月", "¥${feyMoney(dash.lastMonth.estimate)}")
-                        }
-                        Spacer(Modifier.height(8.dp))
-
-                        // 底部统计数字行（2列）
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            MiniStat("已结算", "¥${feyMoney(dash.totalSettled)}")
-                            MiniStat("待结算", "¥${feyMoney(dash.totalUnsettled)}")
+                            // 三列统计：一行三个
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                MiniStat("已结算", "¥${feyMoney(dash.totalSettled)}")
+                                MiniStat("待结算", "¥${feyMoney(dash.totalUnsettled)}")
+                                MiniStat("总订单", feyInt(dash.totalOrders))
+                            }
                         }
                     }
                 }

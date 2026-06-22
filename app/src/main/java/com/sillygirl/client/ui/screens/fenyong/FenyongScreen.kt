@@ -165,7 +165,10 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
             verticalAlignment = Alignment.Top,
         ) {
             // 商品图（固定尺寸）
-            if (order.image.isNotBlank()) {
+            val hasImage = order.image.isNotBlank() && 
+                !order.image.endsWith(".ico", ignoreCase = true) &&
+                order.image.startsWith("http")
+            if (hasImage) {
                 AsyncImage(
                     model = order.image,
                     contentDescription = null,
@@ -177,7 +180,13 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
                     modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("🛒", fontSize = 28.sp)
+                    val placeholderIcon = when (order.site.lowercase()) {
+                        "jd" -> "🔴"  // 京东红
+                        "tb" -> "🟠"  // 淘宝橙
+                        "pdd" -> "🔴"  // 拼多多红
+                        else -> "🛒"
+                    }
+                    Text(placeholderIcon, fontSize = 28.sp)
                 }
             }
 

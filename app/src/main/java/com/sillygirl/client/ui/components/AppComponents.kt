@@ -89,7 +89,10 @@ fun GlassCard(
 
 @Composable
 private fun Content(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Top
+    ) {
         content()
     }
 }
