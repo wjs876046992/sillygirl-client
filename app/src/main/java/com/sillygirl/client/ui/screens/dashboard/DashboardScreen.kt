@@ -79,9 +79,10 @@ fun DashboardScreen(
             ) {
                 WelcomeHeader(name = uiState.userName)
 
+                // 统计卡片区（两行）
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatNumberCard(
-                        Modifier.fillMaxWidth(),
+                        Modifier.weight(1f),
                         icon = Icons.Filled.Extension,
                         iconColor = Color(0xFF667EEA),
                         value = "${uiState.installedPlugins}",
@@ -89,7 +90,7 @@ fun DashboardScreen(
                         onClick = onNavigateToMyPlugins,
                     )
                     StatNumberCard(
-                        Modifier.fillMaxWidth(),
+                        Modifier.weight(1f),
                         icon = Icons.Filled.People,
                         iconColor = Color(0xFF52C41A),
                         value = "${uiState.masterCount}",
@@ -99,7 +100,7 @@ fun DashboardScreen(
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatNumberCard(
-                        Modifier.fillMaxWidth(),
+                        Modifier.weight(1f),
                         icon = Icons.Filled.Schedule,
                         iconColor = Color(0xFFF59E0B),
                         value = "${uiState.activeTaskCount}",
@@ -108,36 +109,49 @@ fun DashboardScreen(
                     )
                 }
 
+                // 分佣统计卡片（从首页进入分佣页）
                 uiState.fenyongDashboard?.let { dash ->
                     GlassCard(
                         onClick = onNavigateToFenyong,
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // 顶部：标题 + 箭头
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(14.dp)),
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text("💰", fontSize = 22.sp)
+                                Text("💰", fontSize = 18.sp)
                             }
-                            Spacer(Modifier.width(14.dp))
-                            Column(Modifier.fillMaxWidth()) {
-                                Text("分佣概览", fontWeight = FontWeight.Bold)
-                                Text("今日收入 ¥${feyMoney(dash.today.actual)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("分佣系统", fontWeight = FontWeight.Bold)
+                                Text("今日收入 ¥${feyMoney(dash.today.actual)} · 总订单 ${feyInt(dash.totalOrders)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                             }
                             Text(">", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(Modifier.height(12.dp))
+
+                        // 顶部统计数字行（3列）
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            MiniStat("今日", "¥${feyMoney(dash.today.estimate)}")
+                            MiniStat("7天", "¥${feyMoney(dash.last7days.estimate)}")
+                            MiniStat("本月", "¥${feyMoney(dash.lastMonth.estimate)}")
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        // 底部统计数字行（2列）
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                             MiniStat("已结算", "¥${feyMoney(dash.totalSettled)}")
-                            MiniStat("总订单", feyInt(dash.totalOrders))
+                            MiniStat("待结算", "¥${feyMoney(dash.totalUnsettled)}")
                         }
                     }
                 }
 
+                // 快捷功能图标网格（紧凑排列）
                 QuickActionGrid(
                     onNavigateToFenyong, onNavigateToPluginMarket, onNavigateToStorage,
                     onNavigateToService, onNavigateToMasters, onNavigateToTasks,
@@ -208,14 +222,18 @@ private fun QuickActionGrid(
         QuickAction(Icons.Filled.Schedule, "定时任务", onNavigateToTasks, listOf(Color(0xFFEF4444), Color(0xFFF43F5E))),
     )
 
+    // 3列网格布局：每行固定3个图标
     for (i in actions.indices step 3) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             for (j in 0 until 3) {
                 val idx = i + j
                 if (idx < actions.size) {
-                    QuickActionItem(actions[idx], Modifier.fillMaxWidth())
+                    QuickActionItem(actions[idx], Modifier.weight(1f))
                 } else {
-                    Spacer(Modifier.fillMaxWidth())
+                    Spacer(Modifier.weight(1f))
                 }
             }
         }
@@ -229,23 +247,27 @@ data class QuickAction(val icon: ImageVector, val label: String, val onClick: ()
 
 @Composable
 private fun QuickActionItem(action: QuickAction, modifier: Modifier = Modifier) {
-    GlassCard(modifier = modifier.clickable(onClick = action.onClick)) {
+    GlassCard(
+        modifier = modifier
+            .clickable(onClick = action.onClick)
+            .padding(8.dp),
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Brush.linearGradient(action.colors), RoundedCornerShape(12.dp)),
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Brush.linearGradient(action.colors), RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     action.icon, null,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(18.dp),
                     tint = Color.White,
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            Text(action.label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.height(6.dp))
+            Text(action.label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
         }
     }
 }

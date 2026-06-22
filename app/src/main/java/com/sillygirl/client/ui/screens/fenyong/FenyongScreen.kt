@@ -1,6 +1,5 @@
 package com.sillygirl.client.ui.screens.fenyong
 
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 
@@ -17,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -27,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.ui.components.*
 import com.sillygirl.client.ui.theme.*
 import java.text.SimpleDateFormat
@@ -68,13 +65,6 @@ fun FenyongScreen(
     viewModel: FenyongViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    
-    // 调试信息：直接在页面上显示当前状态
-    val debugText = "isLoading=${uiState.isLoading}\nerror=${uiState.error}\ndashboard=${uiState.dashboard != null}\norders=${uiState.orders.size}\ntotal=${uiState.total}\npage=${uiState.page}\ntoken=${com.sillygirl.client.data.api.RetrofitClient.token?.take(8)}"
-    
-    LaunchedEffect(Unit) {
-        android.util.Log.d("FenyongScreen", "UI update: $debugText")
-    }
 
     Scaffold(
         topBar = {
@@ -101,7 +91,7 @@ fun FenyongScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             when {
-                uiState.isLoading && uiState.dashboard == null && uiState.orders.isEmpty() -> {
+                uiState.isLoading && uiState.orders.isEmpty() -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
@@ -123,64 +113,6 @@ fun FenyongScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(vertical = 12.dp),
                     ) {
-                        // 调试信息卡片
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Text("🔧 调试信息", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(debugText, style = MaterialTheme.typography.bodySmall)
-                                }
-                            }
-                        }
-                        
-                        // 1. 分佣概览大卡
-                        uiState.dashboard?.let { dash ->
-                            item {
-                                FenyongHeroCard(dash)
-                            }
-                        }
-
-                        // 2. 搜索栏
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                OutlinedTextField(
-                                    value = uiState.keyword,
-                                    onValueChange = viewModel::setKeyword,
-                                    placeholder = { Text("搜索SKU/订单号") },
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    ),
-                                    trailingIcon = {
-                                        if (uiState.keyword.isNotBlank()) {
-                                            IconButton(onClick = { viewModel.clearSearch(); viewModel.loadOrders(1) }) {
-                                                Icon(Icons.Filled.Close, "清除", tint = GrayText)
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.weight(0.58f),
-                                )
-                                FilledTonalButton(
-                                    onClick = { viewModel.loadOrders(1) },
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.height(48.dp).weight(0.42f),
-                                ) {
-                                    Text("搜索")
-                                }
-                            }
-                        }
-
-                        // 3. 订单列表
                         if (uiState.orders.isEmpty() && !uiState.isLoading) {
                             item {
                                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -192,12 +124,11 @@ fun FenyongScreen(
                                 }
                             }
                         } else {
-                            items(uiState.orders) { order ->
+                            items(uiState.orders, key = { it.orderId }) { order ->
                                 OrderItemCard(order)
                             }
                         }
 
-                        // 4. 分页
                         if (uiState.total > 20) {
                             item {
                                 PaginationWidget(
@@ -214,118 +145,26 @@ fun FenyongScreen(
     }
 }
 
-// ===== 分佣 Hero 卡片 =====
-@Composable
-fun FenyongHeroCard(data: com.sillygirl.client.data.model.FenyongDashboardResponse) {
-    Card(
-        modifier = Modifier.fillMaxWidth().shadow(16.dp, RoundedCornerShape(22.dp)),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(22.dp))
-        ) {
-            // 装饰圆
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 16.dp, y = (-16).dp)
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(40.dp))
-                    .background(Color.White.copy(alpha = 0.08f)),
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = (-8).dp, y = 20.dp)
-                    .size(60.dp)
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(Color.White.copy(alpha = 0.06f)),
-            )
-
-            Column(modifier = Modifier.padding(20.dp)) {
-                // 今日收入
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("今日预估", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
-                }
-                BigMoneyTextWithLabel(data.today.estimate)
-
-                Spacer(Modifier.height(16.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = 0.15f))
-                Spacer(Modifier.height(12.dp))
-
-                // 对比行
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                    ComparisonChip("昨日", data.yesterday.estimate, data.yesterday.orders)
-                    ComparisonChip("7天", data.last7days.estimate, data.last7days.orders)
-                    ComparisonChip("本月", data.lastMonth.estimate, data.lastMonth.orders)
-                }
-
-                Spacer(Modifier.height(12.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = 0.15f))
-                Spacer(Modifier.height(8.dp))
-
-                // 平台收益
-                Text("平台收益（今日）", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.8f))
-                Spacer(Modifier.height(6.dp))
-                PlatformRow(data, "jd")
-                PlatformRow(data, "tb")
-                PlatformRow(data, "pdd")
-            }
-        }
-    }
-}
-
-@Composable
-private fun BigMoneyTextWithLabel(value: Double) {
-    Text(
-        "¥${formatMoney(value)}",
-        style = MaterialTheme.typography.displaySmall,
-        fontWeight = FontWeight.Bold,
-        color = Color.White,
-    )
-}
-
-@Composable
-private fun ComparisonChip(label: String, estimate: Double, orders: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.65f))
-        Text("¥${formatMoney(estimate)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
-        Text("$orders 单", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.65f))
-    }
-}
-
-@Composable
-private fun PlatformRow(data: com.sillygirl.client.data.model.FenyongDashboardResponse, code: String) {
-    val stat = data.platforms[code]
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(getPlatformColor(code)),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(getPlatformName(code), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f), modifier = Modifier.weight(0.45f))
-        Text("${stat?.orders ?: 0}单", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
-        Text("¥${formatMoney(stat?.estimate ?: 0.0)}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.White)
-    }
-}
-
 // ===== 订单卡片 =====
 @Composable
 fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
+    val titleText = order.skuName.ifBlank { order.name }
+    val platformText = order.site.takeIf { it.isNotBlank() }?.let { getPlatformName(it) }
+    val timeText = order.createdTime.takeIf { it > 0 }?.let { formatOrderTime(it) }
+    val orderAmount = order.content.firstOrNull { it.label == "订单金额" }?.value?.toString() ?: "—"
+    val estimateAmount = order.content.firstOrNull { it.label == "预估佣金" }?.value?.toString() ?: "0.00"
+    val actualAmount = order.content.firstOrNull { it.label == "实际佣金" }?.value?.toString() ?: "0.00"
+
     GlassCard(
         modifier = Modifier.fillMaxWidth().shadow(4.dp, RoundedCornerShape(16.dp)),
     ) {
+        // 上半部分：商品图 + 标题/标签
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            // 商品图
+            // 商品图（固定尺寸）
             if (order.image.isNotBlank()) {
                 AsyncImage(
                     model = order.image,
@@ -342,58 +181,58 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
                 }
             }
 
-            // 信息
+            // 信息（固定高度列）
             Column(
-                modifier = Modifier.weight(0.65f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    order.skuName.ifBlank { order.name },
+                    titleText,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-
-                // 标签行
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    order.site.takeIf { it.isNotBlank() }?.let { SiteChip(getPlatformName(it), getPlatformColor(it)) }
-                    order.createdTime.takeIf { it > 0 }?.let {
-                        Text(formatOrderTime(it), style = MaterialTheme.typography.labelSmall, color = GrayText)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    platformText?.let { SiteChip(it, getPlatformColor(it)) }
+                    timeText?.let {
+                        Text(it, style = MaterialTheme.typography.labelSmall, color = GrayText)
                     }
                 }
             }
         }
 
-        // 金额行
-        Spacer(Modifier.height(10.dp))
+        // 分隔线
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
-        Spacer(Modifier.height(10.dp))
 
+        // 下半部分：金额行（固定布局）
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
                 Text("订单", style = MaterialTheme.typography.labelSmall, color = GrayText)
-                Text(order.content.firstOrNull { it.label == "订单金额" }?.value?.toString() ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color(0xFF333333))
+                Text(orderAmount, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color(0xFF333333))
             }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
                 Text("预估", style = MaterialTheme.typography.labelSmall, color = GrayText)
-                Text("¥${order.content.firstOrNull { it.label == "预估佣金" }?.value?.toString() ?: "0.00"}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text("¥$estimateAmount", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
                 Text("实际", style = MaterialTheme.typography.labelSmall, color = GrayText)
-                Text("¥${order.content.firstOrNull { it.label == "实际佣金" }?.value?.toString() ?: "0.00"}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = SuccessColor)
+                Text("¥$actualAmount", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = SuccessColor)
             }
         }
     }
@@ -436,5 +275,3 @@ private fun PaginationWidget(currentPage: Int, total: Int, onPageChange: (Int) -
         }
     }
 }
-
-private fun formatMoney(value: Double): String = String.format("%.2f", value)
