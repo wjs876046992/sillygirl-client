@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,13 @@ fun MyPluginsScreen(
     viewModel: MyPluginsViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.snackbarMessage) {
+        val msg = uiState.snackbarMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        viewModel.clearSnackbar()
+    }
 
     Scaffold(
         topBar = {
@@ -36,6 +44,7 @@ fun MyPluginsScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(it) },
     ) { p ->
         when {
             uiState.isLoading -> Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -68,6 +77,13 @@ fun PluginMarketScreen(
     viewModel: PluginMarketViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.snackbarMessage) {
+        val msg = uiState.snackbarMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        viewModel.clearSnackbar()
+    }
 
     Scaffold(
         topBar = {
@@ -78,6 +94,7 @@ fun PluginMarketScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(it) },
     ) { p ->
         when {
             uiState.isLoading -> Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }

@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.sillygirl.client.LocalServerConfig
 import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.repository.ServerConfig
@@ -49,11 +50,24 @@ fun SettingsScreen(
         )
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(uiState.isLoggingOut, uiState.logoutDone) {
+        if (uiState.isLoggingOut && uiState.logoutDone) {
+            scope.launch {
+                snackbarHostState.showSnackbar("已退出登录")
+            }
+            onLogout()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("设置") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } })
         },
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(it) },
     ) { padding ->
         Column(
             modifier = Modifier

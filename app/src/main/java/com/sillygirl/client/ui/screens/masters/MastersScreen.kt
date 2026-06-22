@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.model.MasterInfo
 import com.sillygirl.client.data.repository.MasterRepository
@@ -33,6 +34,7 @@ data class MastersUiState(
     val error: String? = null,
     val masters: List<MasterInfo> = emptyList(),
     val platforms: List<String> = emptyList(),
+    val snackbarMessage: String? = null,
 )
 
 class MastersViewModel : ViewModel() {
@@ -57,10 +59,15 @@ class MastersViewModel : ViewModel() {
             try {
                 RetrofitClient.api.delMaster(mapOf("id" to "${master.id}"))
                 load()
+                _ui.value = _ui.value.copy(snackbarMessage = "已移除管理员")
             } catch (e: Exception) {
                 _ui.value = _ui.value.copy(error = "移除失败：${e.message}")
             }
         }
+    }
+
+    fun clearSnackbar() {
+        _ui.value = _ui.value.copy(snackbarMessage = null)
     }
 }
 
@@ -71,6 +78,14 @@ fun MastersScreen(
     viewModel: MastersViewModel = viewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(ui.snackbarMessage) {
+        val msg = ui.snackbarMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        viewModel.clearSnackbar()
+    }
+
     var showAdd by remember { mutableStateOf(false) }
 
     if (showAdd) {
@@ -92,6 +107,7 @@ fun MastersScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(it) },
     ) { p ->
         when {
             ui.isLoading -> Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }

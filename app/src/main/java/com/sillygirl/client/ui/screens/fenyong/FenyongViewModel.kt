@@ -83,4 +83,8 @@ class FenyongViewModel : ViewModel() {
     fun loadData() {
         loadOrders(1)
     }
+
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
+    }
 }

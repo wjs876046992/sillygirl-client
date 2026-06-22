@@ -30,6 +30,7 @@ data class StorageUiState(
     val keys: List<String> = emptyList(),
     val selectedValue: String? = null,
     val selectedKey: String? = null,
+    val snackbarMessage: String? = null,
 )
 
 class StorageViewModel : ViewModel() {
@@ -68,11 +69,15 @@ class StorageViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 RetrofitClient.api.saveStorage(key, mapOf("value" to value))
-                _ui.value = _ui.value.copy(selectedKey = null, selectedValue = null, error = null)
+                _ui.value = _ui.value.copy(selectedKey = null, selectedValue = null, snackbarMessage = "保存成功", error = null)
             } catch (e: Exception) {
                 _ui.value = _ui.value.copy(error = "保存失败: ${e.message}")
             }
         }
+    }
+
+    fun clearSnackbar() {
+        _ui.value = _ui.value.copy(snackbarMessage = null)
     }
 }
 
@@ -83,10 +88,19 @@ fun StorageScreen(
     viewModel: StorageViewModel = viewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
     var keyInput by remember { mutableStateOf("") }
     var valueInput by remember { mutableStateOf("") }
 
+    LaunchedEffect(ui.snackbarMessage) {
+        val msg = ui.snackbarMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        viewModel.clearSnackbar()
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(it) },
+    ) { p ->
         topBar = {
             TopAppBar(
                 title = { Text("存储管理") },

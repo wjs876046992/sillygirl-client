@@ -15,6 +15,7 @@ data class MyPluginsUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val plugins: List<PluginInfo> = emptyList(),
+    val snackbarMessage: String? = null,
 )
 
 class MyPluginsViewModel : ViewModel() {
@@ -44,10 +45,15 @@ class MyPluginsViewModel : ViewModel() {
                     RetrofitClient.api.runPlugin(body)
                 }
                 load()
+                _uiState.value = _uiState.value.copy(snackbarMessage = if (plugin.running) "已停止" else "已启动")
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "操作失败：${e.message}")
             }
         }
+    }
+
+    fun clearSnackbar() {
+        _uiState.value = _uiState.value.copy(snackbarMessage = null)
     }
 }
 
@@ -79,9 +85,14 @@ class PluginMarketViewModel : ViewModel() {
             try {
                 RetrofitClient.api.installPlugin(mapOf("name" to id))
                 load()
+                _uiState.value = _uiState.value.copy(snackbarMessage = "安装成功")
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "安装失败：${e.message}")
             }
         }
+    }
+
+    fun clearSnackbar() {
+        _uiState.value = _uiState.value.copy(snackbarMessage = null)
     }
 }

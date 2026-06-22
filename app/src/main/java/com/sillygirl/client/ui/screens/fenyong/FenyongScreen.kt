@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import coil3.compose.AsyncImage
 import com.sillygirl.client.ui.components.*
 import com.sillygirl.client.ui.theme.*
@@ -61,10 +62,17 @@ private fun formatOrderTime(ts: Long?): String {
 @Composable
 fun FenyongScreen(
     onBack: () -> Unit = {},
-    onLogout: () -> Unit = {},
     viewModel: FenyongViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(uiState.error) {
+        val msg = uiState.error ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        viewModel.clearError()
+    }
 
     Scaffold(
         topBar = {
@@ -79,13 +87,11 @@ fun FenyongScreen(
                     IconButton(onClick = { viewModel.loadData() }) {
                         Icon(Icons.Filled.Refresh, "刷新")
                     }
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, "退出登录")
-                    }
                 },
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(it) },
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding),

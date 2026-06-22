@@ -37,6 +37,7 @@ data class TasksUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val tasks: List<TaskInfo> = emptyList(),
+    val snackbarMessage: String? = null,
 )
 
 class TasksViewModel : ViewModel() {
@@ -57,6 +58,7 @@ class TasksViewModel : ViewModel() {
         try {
             RetrofitClient.api.setTaskEnable(mapOf("id" to task.id.toString(), "enable" to !task.enable))
             load()
+            _ui.value = _ui.value.copy(snackbarMessage = if (task.enable) "已停止" else "已启动")
         } catch (e: Exception) {
             _ui.value = _ui.value.copy(error = "操作失败：${e.message}")
         }
@@ -66,6 +68,7 @@ class TasksViewModel : ViewModel() {
         try {
             RetrofitClient.api.delTask(mapOf("id" to task.id.toString()))
             load()
+            _ui.value = _ui.value.copy(snackbarMessage = "已删除")
         } catch (e: Exception) {
             _ui.value = _ui.value.copy(error = "删除失败：${e.message}")
         }
@@ -74,8 +77,15 @@ class TasksViewModel : ViewModel() {
     fun runTask(task: TaskInfo) { viewModelScope.launch {
         try {
             RetrofitClient.api.runTask(mapOf("id" to task.id.toString()))
-        } catch (_: Exception) {}
+            _ui.value = _ui.value.copy(snackbarMessage = "任务已执行")
+        } catch (e: Exception) {
+            _ui.value = _ui.value.copy(error = "执行失败：${e.message}")
+        }
     }}
+
+    fun clearSnackbar() {
+        _ui.value = _ui.value.copy(snackbarMessage = null)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,6 +95,13 @@ fun TasksScreen(
     viewModel: TasksViewModel = viewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(ui.snackbarMessage) {
+        val msg = ui.snackbarMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        viewModel.clearSnackbar()
+    }
 
     Scaffold(
         topBar = {
@@ -95,6 +112,7 @@ fun TasksScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(it) },
     ) { p ->
         when {
             ui.isLoading -> Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
