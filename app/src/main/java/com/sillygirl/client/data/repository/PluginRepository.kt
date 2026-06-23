@@ -73,6 +73,48 @@ class PluginRepository {
         }
     }
 
+    suspend fun togglePluginDisable(uuid: String, disable: Boolean): Result<Unit> {
+        return try {
+            val body = mapOf("plugin_disable.$uuid" to disable.toString())
+            val response = RetrofitClient.api.saveStorage(uuid, body)
+            if (response.success) Result.success(Unit)
+            else Result.failure(Exception("切换禁用模式失败"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getPluginDetail(uuid: String): Result<PluginRoute> {
+        return try {
+            val response = RetrofitClient.api.getPluginList(activeKey = "tab1")
+            if (response.success) {
+                val plugin = response.data.find { it.id == uuid || it.id == uuid.removePrefix("/script/") }
+                if (plugin != null) {
+                    Result.success(PluginRoute(
+                        path = "/script/${plugin.id}",
+                        name = plugin.id,
+                        title = plugin.title,
+                        description = plugin.description,
+                        icon = plugin.icon,
+                        version = plugin.version,
+                        author = plugin.author,
+                        running = plugin.running,
+                        disable = plugin.disable,
+                        debug = plugin.debug,
+                        hasForm = plugin.hasForm,
+                        classes = plugin.classes,
+                    ))
+                } else {
+                    Result.failure(Exception("插件不存在"))
+                }
+            } else {
+                Result.failure(Exception("获取插件列表失败"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun savePluginForm(uuid: String, formData: Map<String, Any?>): Result<Unit> {
         return try {
             val body = formData.mapValues { it.value?.toString() ?: "" }

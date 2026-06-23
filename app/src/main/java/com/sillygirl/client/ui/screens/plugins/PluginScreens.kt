@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -14,6 +15,7 @@ import androidx.compose.ui.Modifier
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -246,9 +248,12 @@ fun PluginDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showEditor by remember { mutableStateOf(false) }
     var editorContent by remember { mutableStateOf("") }
+    var currentPlugin by remember { mutableStateOf(plugin) }
 
     LaunchedEffect(plugin.path) {
         viewModel.loadPluginContent(plugin.path)
+        // 从plugins/list.json获取完整的插件信息
+        viewModel.loadPluginDetail(plugin.path)
     }
 
     LaunchedEffect(detailState.snackbarMessage) {
@@ -263,10 +268,14 @@ fun PluginDetailScreen(
         }
     }
 
+    LaunchedEffect(detailState.pluginDetail) {
+        detailState.pluginDetail?.let { currentPlugin = it }
+    }
+
     Scaffold(
         topBar = {
             MiniAppBar(
-                title = { Text(plugin.title.ifBlank { plugin.name }) },
+                title = { Text(currentPlugin.title.ifBlank { currentPlugin.name }) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
                 actions = {
                     IconButton(onClick = { viewModel.reloadPlugin(plugin.path) }) {
@@ -306,9 +315,30 @@ fun PluginDetailScreen(
                 ) {
                     // 插件信息卡片
                     item {
-                        PluginInfoCard(plugin, plugin.debug, onToggleDebug = {
-                            viewModel.toggleDebug(plugin.path, !plugin.debug)
-                        })
+                        PluginInfoCard(
+                            plugin = currentPlugin,
+                            debug = currentPlugin.debug,
+                            disable = currentPlugin.disable,
+                            onToggleDebug = {
+                                viewModel.toggleDebug(plugin.path, !currentPlugin.debug)
+                            },
+                            onToggleDisable = {
+                                viewModel.toggleDisable(plugin.path, !currentPlugin.disable)
+                            }
+                        )
+                    }
+
+                    // 表单配置
+                    if (currentPlugin.hasForm && detailState.formFields.isNotEmpty()) {
+                        item {
+                            PluginFormCard(
+                                fields = detailState.formFields,
+                                isSaving = detailState.isSaving,
+                                onSave = { formData ->
+                                    viewModel.savePluginForm(plugin.path, formData)
+                                }
+                            )
+                        }
                     }
 
                     // 代码编辑器
@@ -331,7 +361,13 @@ fun PluginDetailScreen(
 }
 
 @Composable
-private fun PluginInfoCard(plugin: PluginRoute, debug: Boolean, onToggleDebug: () -> Unit) {
+private fun PluginInfoCard(
+    plugin: PluginRoute,
+    debug: Boolean,
+    disable: Boolean,
+    onToggleDebug: () -> Unit,
+    onToggleDisable: () -> Unit,
+) {
     GlassCard {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // 头部：图标 + 标题
@@ -340,11 +376,15 @@ private fun PluginInfoCard(plugin: PluginRoute, debug: Boolean, onToggleDebug: (
                     modifier = Modifier.size(48.dp).shadow(4.dp, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        Icons.Filled.Extension, null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
-                    )
+                    if (plugin.icon.isNotBlank()) {
+                        Text(plugin.icon, fontSize = 24.sp)
+                    } else {
+                        Icon(
+                            Icons.Filled.Extension, null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
@@ -402,7 +442,7 @@ private fun PluginInfoCard(plugin: PluginRoute, debug: Boolean, onToggleDebug: (
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
 
-            // 操作行
+            // 调试模式
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -410,6 +450,124 @@ private fun PluginInfoCard(plugin: PluginRoute, debug: Boolean, onToggleDebug: (
             ) {
                 Text("调试模式", style = MaterialTheme.typography.bodyMedium)
                 Switch(checked = debug, onCheckedChange = { onToggleDebug() })
+            }
+
+            // 禁用模式
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("禁用模式", style = MaterialTheme.typography.bodyMedium)
+                Switch(checked = disable, onCheckedChange = { onToggleDisable() })
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PluginFormCard(
+    fields: List<com.sillygirl.client.data.model.PluginFormField>,
+    isSaving: Boolean,
+    onSave: (Map<String, Any?>) -> Unit,
+) {
+    var formData by remember { mutableStateOf<Map<String, Any?>>(emptyMap()) }
+
+    LaunchedEffect(fields) {
+        formData = fields.associate { it.key to it.value }
+    }
+
+    GlassCard {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("插件配置", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+
+            fields.forEach { field ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(field.label, style = MaterialTheme.typography.labelMedium)
+
+                    when (field.type) {
+                        "switch" -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(field.label, style = MaterialTheme.typography.bodyMedium)
+                                Switch(
+                                    checked = formData[field.key] as? Boolean ?: false,
+                                    onCheckedChange = { newValue ->
+                                        formData = formData.toMutableMap().apply { put(field.key, newValue) }
+                                    }
+                                )
+                            }
+                        }
+                        "select" -> {
+                            var expanded by remember { mutableStateOf(false) }
+                            ExposedDropdownMenuBox(
+                                expanded = expanded,
+                                onExpandedChange = { expanded = it },
+                            ) {
+                                OutlinedTextField(
+                                    value = formData[field.key]?.toString() ?: "",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    shape = RoundedCornerShape(8.dp),
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false },
+                                ) {
+                                    field.options.forEach { option ->
+                                        DropdownMenuItem(
+                                            text = { Text(option.label) },
+                                            onClick = {
+                                                formData = formData.toMutableMap().apply { put(field.key, option.value) }
+                                                expanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        "number" -> {
+                            OutlinedTextField(
+                                value = formData[field.key]?.toString() ?: "",
+                                onValueChange = { newValue ->
+                                    formData = formData.toMutableMap().apply { put(field.key, newValue.toIntOrNull() ?: 0) }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            )
+                        }
+                        else -> {
+                            OutlinedTextField(
+                                value = formData[field.key]?.toString() ?: "",
+                                onValueChange = { newValue ->
+                                    formData = formData.toMutableMap().apply { put(field.key, newValue) }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp),
+                            )
+                        }
+                    }
+                }
+            }
+
+            Button(
+                onClick = { onSave(formData) },
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text("保存配置")
+                }
             }
         }
     }

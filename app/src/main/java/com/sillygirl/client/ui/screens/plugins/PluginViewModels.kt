@@ -1,9 +1,11 @@
 package com.sillygirl.client.ui.screens.plugins
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.model.PluginInfo
+import com.sillygirl.client.data.model.PluginFormField
 import com.sillygirl.client.data.model.PluginRoute
 import com.sillygirl.client.data.repository.PluginRepository
 import kotlinx.coroutines.async
@@ -25,6 +27,8 @@ data class PluginDetailUiState(
     val content: String = "",
     val isSaving: Boolean = false,
     val snackbarMessage: String? = null,
+    val pluginDetail: PluginRoute? = null,
+    val formFields: List<PluginFormField> = emptyList(),
 )
 
 class MyPluginsViewModel : ViewModel() {
@@ -81,11 +85,45 @@ class MyPluginsViewModel : ViewModel() {
             repo.togglePluginDebug(uuid, debug).fold(
                 onSuccess = {
                     _detailState.value = _detailState.value.copy(
+                        pluginDetail = _detailState.value.pluginDetail?.copy(debug = debug),
                         snackbarMessage = if (debug) "已开启调试模式" else "已关闭调试模式"
                     )
                 },
                 onFailure = {
                     _detailState.value = _detailState.value.copy(snackbarMessage = "操作失败：${it.message}")
+                },
+            )
+        }
+    }
+
+    fun toggleDisable(uuid: String, disable: Boolean) {
+        viewModelScope.launch {
+            repo.togglePluginDisable(uuid, disable).fold(
+                onSuccess = {
+                    _detailState.value = _detailState.value.copy(
+                        pluginDetail = _detailState.value.pluginDetail?.copy(disable = disable),
+                        snackbarMessage = if (disable) "已禁用插件" else "已启用插件"
+                    )
+                },
+                onFailure = {
+                    _detailState.value = _detailState.value.copy(snackbarMessage = "操作失败：${it.message}")
+                },
+            )
+        }
+    }
+
+    fun loadPluginDetail(uuid: String) {
+        viewModelScope.launch {
+            repo.getPluginDetail(uuid).fold(
+                onSuccess = { plugin ->
+                    _detailState.value = _detailState.value.copy(
+                        pluginDetail = plugin,
+                        formFields = plugin.formFields
+                    )
+                },
+                onFailure = { e ->
+                    // 如果获取详情失败，不影响主流程
+                    Log.e("MyPluginsViewModel", "Failed to load plugin detail", e)
                 },
             )
         }

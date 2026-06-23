@@ -43,6 +43,7 @@ data class PluginRoute(
     val debug: Boolean = false,
     @SerializedName("has_form") val hasForm: Boolean = false,
     val classes: List<String> = emptyList(),
+    val formFields: List<PluginFormField> = emptyList(),
 )
 
 data class PluginDetailResponse(
@@ -90,6 +91,7 @@ data class PluginInfo(
     val downloads: Int = 0,
     val icon: String = "",
     val debug: Boolean = false,
+    @SerializedName("has_form") val hasForm: Boolean = false,
 )
 
 // ===== Fenyong =====
