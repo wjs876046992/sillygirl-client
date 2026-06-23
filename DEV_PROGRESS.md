@@ -7,15 +7,17 @@
 - **TasksScreen**：删除任务确认 + 执行任务确认
 - **StorageScreen**：保存键值确认（显示 key 和 value 预览）
 
-### 刷新 Snackbar 提示
+### 刷新 Snackbar 提示（仅用户主动点击刷新按钮时）
 - **MastersScreen**：刷新后显示"已刷新"
 - **TasksScreen**：刷新后显示"已刷新"
 - **StorageScreen**：刷新后显示"已刷新"
 - **MyPluginsScreen**：刷新后显示"已刷新"
 - **PluginMarketScreen**：刷新后显示"已刷新"
+- 各ViewModel增加 `showRefreshHint` 参数，默认false，初始加载/操作后刷新不提示
 
 ### Bug 修复
 - TasksScreen.load() 修复为保留当前列表状态（刷新时不重置为空）
+- TaskItemCard 标题 Column `fillMaxWidth()` → `weight(1f)`，修复 Switch 被挤出屏幕
 
 ---
 
