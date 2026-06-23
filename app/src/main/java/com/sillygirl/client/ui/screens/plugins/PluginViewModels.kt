@@ -3,7 +3,6 @@ package com.sillygirl.client.ui.screens.plugins
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sillygirl.client.data.api.RetrofitClient
-import com.sillygirl.client.data.model.PluginDetail
 import com.sillygirl.client.data.model.PluginInfo
 import com.sillygirl.client.data.model.PluginRoute
 import com.sillygirl.client.data.repository.PluginRepository
@@ -23,7 +22,7 @@ data class MyPluginsUiState(
 data class PluginDetailUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
-    val detail: PluginDetail? = null,
+    val content: String = "",
     val isSaving: Boolean = false,
     val snackbarMessage: String? = null,
 )
@@ -40,12 +39,16 @@ class MyPluginsViewModel : ViewModel() {
         _uiState.value = MyPluginsUiState(isLoading = false, plugins = plugins)
     }
 
-    fun loadPluginDetail(uuid: String) {
+    fun loadPluginContent(uuid: String) {
         viewModelScope.launch {
             _detailState.value = PluginDetailUiState(isLoading = true)
-            repo.getPluginDetail(uuid).fold(
-                onSuccess = { _detailState.value = PluginDetailUiState(isLoading = false, detail = it) },
-                onFailure = { _detailState.value = PluginDetailUiState(isLoading = false, error = it.message) },
+            repo.getPluginContent(uuid).fold(
+                onSuccess = { content ->
+                    _detailState.value = PluginDetailUiState(isLoading = false, content = content)
+                },
+                onFailure = { e ->
+                    _detailState.value = PluginDetailUiState(isLoading = false, error = e.message)
+                },
             )
         }
     }
@@ -78,7 +81,6 @@ class MyPluginsViewModel : ViewModel() {
             repo.togglePluginDebug(uuid, debug).fold(
                 onSuccess = {
                     _detailState.value = _detailState.value.copy(
-                        detail = _detailState.value.detail?.copy(debug = debug),
                         snackbarMessage = if (debug) "已开启调试模式" else "已关闭调试模式"
                     )
                 },

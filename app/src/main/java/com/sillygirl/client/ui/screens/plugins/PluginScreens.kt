@@ -239,7 +239,7 @@ fun PluginDetailScreen(
     var editorContent by remember { mutableStateOf("") }
 
     LaunchedEffect(plugin.path) {
-        viewModel.loadPluginDetail(plugin.path)
+        viewModel.loadPluginContent(plugin.path)
     }
 
     LaunchedEffect(detailState.snackbarMessage) {
@@ -248,9 +248,9 @@ fun PluginDetailScreen(
         viewModel.clearDetailSnackbar()
     }
 
-    LaunchedEffect(detailState.detail?.content) {
-        if (detailState.detail?.content != null && editorContent.isEmpty()) {
-            editorContent = detailState.detail!!.content
+    LaunchedEffect(detailState.content) {
+        if (detailState.content.isNotEmpty() && editorContent.isEmpty()) {
+            editorContent = detailState.content
         }
     }
 
@@ -283,7 +283,7 @@ fun PluginDetailScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(detailState.error!!, color = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.height(12.dp))
-                        OutlinedButton(onClick = { viewModel.loadPluginDetail(plugin.path) }) {
+                        OutlinedButton(onClick = { viewModel.loadPluginContent(plugin.path) }) {
                             Text("重试")
                         }
                     }
@@ -297,23 +297,9 @@ fun PluginDetailScreen(
                 ) {
                     // 插件信息卡片
                     item {
-                        PluginInfoCard(plugin, detailState.detail?.debug ?: false, onToggleDebug = {
-                            viewModel.toggleDebug(plugin.path, !(detailState.detail?.debug ?: false))
+                        PluginInfoCard(plugin, plugin.debug, onToggleDebug = {
+                            viewModel.toggleDebug(plugin.path, !plugin.debug)
                         })
-                    }
-
-                    // 表单配置（如果有）
-                    if (plugin.hasForm && detailState.detail?.form != null) {
-                        item {
-                            PluginFormCard(
-                                plugin = plugin,
-                                form = detailState.detail!!.form,
-                                isSaving = detailState.isSaving,
-                                onSave = { formData ->
-                                    viewModel.savePluginForm(plugin.path, formData)
-                                }
-                            )
-                        }
                     }
 
                     // 代码编辑器
@@ -415,82 +401,6 @@ private fun PluginInfoCard(plugin: PluginRoute, debug: Boolean, onToggleDebug: (
             ) {
                 Text("调试模式", style = MaterialTheme.typography.bodyMedium)
                 Switch(checked = debug, onCheckedChange = { onToggleDebug() })
-            }
-        }
-    }
-}
-
-@Composable
-private fun PluginFormCard(
-    plugin: PluginRoute,
-    form: List<com.sillygirl.client.data.model.PluginFormField>,
-    isSaving: Boolean,
-    onSave: (Map<String, Any?>) -> Unit,
-) {
-    val formData = remember { mutableStateMapOf<String, Any?>() }
-
-    // 初始化表单数据
-    LaunchedEffect(form) {
-        form.forEach { field ->
-            if (formData[field.key] == null) {
-                formData[field.key] = field.value
-            }
-        }
-    }
-
-    GlassCard {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("插件配置", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
-
-            form.forEach { field ->
-                when (field.type) {
-                    "switch" -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(field.label.ifBlank { field.key }, style = MaterialTheme.typography.bodyMedium)
-                            Switch(
-                                checked = formData[field.key] as? Boolean ?: false,
-                                onCheckedChange = { formData[field.key] = it }
-                            )
-                        }
-                    }
-                    "number" -> {
-                        OutlinedTextField(
-                            value = formData[field.key]?.toString() ?: "",
-                            onValueChange = { formData[field.key] = it },
-                            label = { Text(field.label.ifBlank { field.key }) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                        )
-                    }
-                    else -> { // text
-                        OutlinedTextField(
-                            value = formData[field.key]?.toString() ?: "",
-                            onValueChange = { formData[field.key] = it },
-                            label = { Text(field.label.ifBlank { field.key }) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                        )
-                    }
-                }
-            }
-
-            Button(
-                onClick = { onSave(formData.toMap()) },
-                enabled = !isSaving,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                if (isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
-                } else {
-                    Text("保存配置")
-                }
             }
         }
     }

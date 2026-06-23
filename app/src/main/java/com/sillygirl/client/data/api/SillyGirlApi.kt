@@ -40,30 +40,6 @@ interface SillyGirlApi {
     @Headers("Content-Type: application/json")
     suspend fun uninstallPlugin(@Body body: Map<String, String>): ApiResponse<Any>
 
-    // 获取插件详情（内容 + 配置）
-    @GET("api/plugins/detail")
-    suspend fun getPluginDetail(
-        @Query("uuid") uuid: String,
-    ): PluginDetailResponse
-
-    // 编辑插件内容
-    @PUT("api/plugins/content")
-    @Headers("Content-Type: application/json")
-    suspend fun updatePluginContent(
-        @Query("uuid") uuid: String,
-        @Body body: Map<String, String>,
-    ): ApiResponse<Any>
-
-    // 重载插件
-    @POST("api/plugins/reload")
-    @Headers("Content-Type: application/json")
-    suspend fun reloadPlugin(@Body body: Map<String, String>): ApiResponse<Any>
-
-    // 切换 debug 模式
-    @POST("api/plugins/debug")
-    @Headers("Content-Type: application/json")
-    suspend fun togglePluginDebug(@Body body: Map<String, Any>): ApiResponse<Any>
-
     // ===== Fenyong =====
     // GET /api/fenyong/dashboard — returns { success, today, yesterday, last7days, lastMonth, platforms, total_settled, total_unsettled, total_orders }
     @GET("api/fenyong/dashboard")
