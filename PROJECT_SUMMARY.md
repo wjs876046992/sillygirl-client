@@ -310,28 +310,27 @@ Column {
 **Three screens**:
 - `MyPluginsScreen` (`MyPluginsViewModel`) — installed plugins from `currentUser.plugins`
 - `PluginMarketScreen` (`PluginMarketViewModel`) — available plugins with install button
-- `PluginDetailScreen` (`MyPluginsViewModel`) — plugin detail with editor, debug toggle, and form config
+- `PluginDetailScreen` (`MyPluginsViewModel`) — plugin detail with editor, debug toggle
 
 **UI States**:
 - `MyPluginsUiState(isLoading, error, plugins, snackbarMessage)`
-- `PluginDetailUiState(isLoading, error, detail, isSaving, snackbarMessage)`
+- `PluginDetailUiState(isLoading, error, content, isSaving, snackbarMessage)`
 
 **Features**:
 - MyPluginsScreen: List of user's plugins from `currentUser.plugins` (PluginRoute)
+  - Displays icon (emoji), title, description, version, author/origin
+  - Click to navigate to PluginDetailScreen
 - PluginDetailScreen:
   - Plugin info card (title, description, version, author, classes)
   - Debug mode toggle (uses `plugin_debug.{uuid}` key)
-  - Form configuration (if plugin has `@form` annotation)
   - Code editor with save functionality
   - Reload plugin button
 
-**API Endpoints**:
-- `GET /api/plugins/detail?uuid={uuid}` — Get plugin detail (content + form config)
-- `PUT /api/plugins/content?uuid={uuid}` — Update plugin content
-- `POST /api/plugins/reload` — Reload plugin
-- `POST /api/plugins/debug` — Toggle debug mode
-- `GET /api/storage?keys=plugin_debug.{uuid},plugin_disable.{uuid}` — Get plugin state
-- `PUT /api/storage?uuid={uuid}` — Save plugin form config
+**API Usage** (uses existing storage API):
+- Get plugin content: `GET /api/storage?keys=plugins.{uuid}`
+- Update plugin content: `PUT /api/storage?uuid={pluginId}` with body `{plugins.{uuid}: content}`
+- Reload plugin: `PUT /api/storage?uuid={pluginId}` with body `{plugins.{uuid}: reload}`
+- Toggle debug: `PUT /api/storage?uuid={pluginId}` with body `{plugin_debug.{uuid}: true/false}`
 
 ### 4.6 MastersScreen + MastersViewModel (inline)
 
@@ -420,7 +419,7 @@ CurrentUserResponse   { success, data: UserData }
 ### UserData + PluginRoute
 ```kotlin
 UserData     { name, avatar, plugins: List<PluginRoute> }
-PluginRoute  { path, name, component, createAt }
+PluginRoute  { path, name, component, createAt, title, description, icon, origin, version, author, running, disable, debug, hasForm, classes }
 ```
 
 ### PluginInfo
