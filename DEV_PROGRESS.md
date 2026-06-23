@@ -1,5 +1,19 @@
 # sillygirl-client 开发进展
 
+## 2026-06-23 修复插件内容获取和图标显示
+
+### Bug 修复
+
+1. **插件详情页编辑显示"非法操作，请勿乱动"**
+   - 根因：Repository 传给后端的 key 带 `/script/` 前缀（如 `plugins./script/uuid`），后端 `checkFilePlugin` 匹配不到 UUID
+   - 修复：所有 Repository 方法统一用 `asPluginId()` strip 前缀
+
+2. **插件列表 icon URL 直接输出为文字**
+   - 根因：icon 字段可能是 URL，但只用 `Text()` 显示
+   - 修复：检测 URL 时使用 Coil `AsyncImage` 加载图片，其余保持 Text/默认图标
+
+---
+
 ## 2026-06-23 优化插件管理（搜索/筛选/状态/卸载/表单修复）
 
 ### MyPluginsScreen 优化
