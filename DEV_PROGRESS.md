@@ -1,5 +1,15 @@
 # sillygirl-client 开发进展
 
+## 2026-06-23 返佣订单图片迁移到 Coil
+
+- 删除 FenyongViewModel 中自定义 ImageCache 单例（~60行）
+- 删除 preloadImages() 方法及其调用
+- OrderItemImage 改用 Coil AsyncImage，加载失败显示平台色占位
+- SillyGirlApp OkHttp 拦截器统一添加 JD Referer/User-Agent
+- 获得：磁盘缓存、内存管理、crossfade 动画，净减 48 行
+
+---
+
 ## 2026-06-23 修复插件内容获取和图标显示
 
 ### Bug 修复
