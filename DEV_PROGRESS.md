@@ -1,5 +1,48 @@
 # sillygirl-client 开发进展
 
+## 2026-06-23 本次会话完成的工作
+
+### 一、插件管理优化
+- **MyPluginsScreen**：搜索栏（名称/描述/作者模糊搜索）、分类筛选 chips、运行状态绿点、状态标签（已禁用/调试/配置）
+- **PluginDetailScreen**：运行状态指示器、toggle loading 转圈、禁用开关红色 track、卸载功能（确认对话框）、origin 标签
+- **PluginRepository**：所有方法统一 `asPluginId()` strip `/script/` 前缀，修复"非法操作"bug；新增 `uninstallPlugin()`
+
+### 二、Coil 3 图片加载
+- 添加 `coil-compose:3.0.4` + `coil-network-okhttp:3.0.4` 依赖
+- 新建 `SillyGirlApp.kt` 实现 `SingletonImageLoader.Factory`（OkHttp + 50MB 磁盘缓存 + JD Referer 拦截器）
+- 插件 icon URL 识别（`isIconUrl()`）→ Coil AsyncImage 加载
+- 返佣订单图片从自定义 `ImageCache` 迁移到 Coil，删除 ~60 行手写缓存代码
+
+### 三、登录状态与会话管理
+- **启动验证**：`LaunchedEffect` 检查 token → `verifySession()` → 有效则跳过登录
+- **会话过期**：OkHttp `sessionInterceptor` 拦截 401/403 → 触发 `onSessionExpired` 回调 → 自动跳转登录页
+- **DisposableEffect** 注册/注销回调，生命周期安全
+
+### 四、服务管理（ServiceScreen）
+- 完整实现：服务器列表、当前服务器标识（绿色"当前"标签）
+- 添加服务器对话框（地址/别名/用户名/密码）
+- 切换服务器（确认 → setDefaultIndex + setServer + clearToken → 跳转登录）
+- 删除服务器（确认对话框）
+
+### 五、MiniAppBar 组件抽取
+- 从 9 个文件中移除 private MiniAppBar 定义
+- 在 `AppComponents.kt` 中新增 public `MiniAppBar` composable
+- 所有 9 个文件改为 import 共享组件
+
+### 六、操作确认与刷新提示
+- MastersScreen：删除管理员确认
+- TasksScreen：删除/执行任务确认
+- StorageScreen：保存键值确认（显示 key + value 预览）
+- 刷新 snackbar：仅用户主动点击刷新按钮时显示"已刷新"
+
+### 七、其他修复与优化
+- 定时任务列表显示插件 `@icon` 图片（Coil AsyncImage）
+- TaskItemCard/MasterCard 布局溢出修复（`Column(weight(1f))`）
+- Dashboard FeatureGrid 移除重复的"管理员"和"定时任务"入口
+- CI workflow 关闭自动触发，仅保留 `workflow_dispatch`
+
+---
+
 ## 2026-06-23 操作确认 + 刷新提示
 
 ### 确认对话框

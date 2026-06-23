@@ -1,6 +1,6 @@
 # SillyGirl Client Project Summary
 
-> Auto-generated for agent readability. Last updated: 2026-06-23 (night)
+> Auto-generated for agent readability. Last updated: 2026-06-23 (latest session)
 
 ## 1. Repository Overview
 
@@ -10,7 +10,7 @@
 - **Build**: Gradle Kotlin DSL (AGP 8.12.1, Kotlin 2.0.20, Compose BOM 2024.09.00)
 - **SDK**: minSdk 26, compileSdk 36, targetSdk 36
 - **JDK**: 21 (Temurin, homebrew)
-- **Kotlin files**: 30
+- **Kotlin files**: 31
 - **Resource files**: 122
 - **Purpose**: Android mobile management app for sillyGirl AI chatbot backend. Provides server list, dashboard, commission statistics, plugin marketplace, admin management, cron tasks, and KV storage.
 
@@ -39,6 +39,7 @@ sillygirl-client/
 
     java/com/sillygirl/client/
       MainActivity.kt               # Entry point
+      SillyGirlApp.kt               # Application class (Coil SingletonImageLoader.Factory)
 
       data/                          # 数据层 (10 files)
         api/
@@ -124,7 +125,7 @@ App 启动
                      ├── 🧩 插件市场 → PluginMarketScreen
                      ├── 👥 管理员 → MastersScreen
                      ├── 💾 存储 → StorageScreen
-                     ├── 🔧 服务 → ServiceScreen（开发中）
+                     ├── 🔧 服务 → ServiceScreen
                      ├── ⏰ 定时任务 → TasksScreen
                      └── ⚙️ 设置 → SettingsScreen（退出登录）
 ```
@@ -201,22 +202,23 @@ ENCODING:
 - 待/审核: `WarningColor` (#F59E0B)
 - 空/其他: `Primary` / `GrayText`
 
-### 3.6 Image Caching (FenyongViewModel.kt)
+### 3.6 Image Loading (Coil 3)
 
-`ImageCache` is a custom singleton (not Coil):
+Global image loading via Coil 3 with OkHttp network fetcher:
 
 ```kotlin
-object ImageCache {
-    private val cache = mutableMapOf<String, BitmapPainter>()
-    fun get(url): BitmapPainter?       // Read from cache (synchronized)
-    fun put(url, bitmap)               // Write to cache (synchronized)
-    fun preload(urls)                  // Batch preload via OkHttp
+// SillyGirlApp.kt — implements SingletonImageLoader.Factory
+class SillyGirlApp : Application(), SingletonImageLoader.Factory {
+    override fun newImageLoader(context: Context): ImageLoader {
+        // OkHttp with JD Referer + User-Agent interceptor
+        // 50MB disk cache, crossfade enabled
+    }
 }
 ```
 
-- Preload uses OkHttp with JD `Referer` + custom `User-Agent`
-- Skips `.ico` files
-- Falls back to platform-colored placeholder box with first character (JD=红, TB=橙, PDD=紫)
+- `AsyncImage` used for: plugin icons (URL detection), task icons (`@icon`), order images
+- Fallback: platform-colored placeholder with first character (JD=红, TB=橙, PDD=紫)
+- Network interceptor adds JD `Referer` + `User-Agent` for anti-hotlink protection
 
 ### 3.7 CompositionLocal
 
@@ -308,23 +310,31 @@ Column {
 ### 4.5 PluginScreens + PluginViewModels
 
 **Three screens**:
-- `MyPluginsScreen` (`MyPluginsViewModel`) — installed plugins from `currentUser.plugins`
+- `MyPluginsScreen` (`MyPluginsViewModel`) — installed plugins with search/filter
 - `PluginMarketScreen` (`PluginMarketViewModel`) — available plugins with install button
-- `PluginDetailScreen` (`MyPluginsViewModel`) — plugin detail with editor, debug toggle
+- `PluginDetailScreen` (`MyPluginsViewModel`) — plugin detail with editor, debug/disable toggle, uninstall
 
 **UI States**:
 - `MyPluginsUiState(isLoading, error, plugins, snackbarMessage)`
-- `PluginDetailUiState(isLoading, error, content, isSaving, snackbarMessage)`
+- `PluginDetailUiState(isLoading, error, content, isSaving, isToggling, snackbarMessage)`
 
 **Features**:
-- MyPluginsScreen: List of user's plugins from `currentUser.plugins` (PluginRoute)
-  - Displays icon (emoji), title, description, version, author/origin
-  - Click to navigate to PluginDetailScreen
+- MyPluginsScreen:
+  - Search bar (name/description/author fuzzy search)
+  - Category filter chips (auto-collected from plugin classes)
+  - Running status green dot indicator
+  - Status badges: 已禁用(red), 调试(purple), 配置(blue)
+  - Plugin count + running count header
+  - Empty search result hint
 - PluginDetailScreen:
-  - Plugin info card (title, description, version, author, classes)
-  - Debug mode toggle (uses `plugin_debug.{uuid}` key)
+  - Plugin info card (title, description, version, author, origin tag, classes)
+  - Running status indicator (green/gray/red)
+  - Debug mode toggle with loading spinner
+  - Disable mode toggle (red track) with loading spinner
   - Code editor with save functionality
   - Reload plugin button
+  - Uninstall with confirmation dialog
+  - Toggle helper text descriptions
 
 **API Usage** (uses existing storage API):
 - Get plugin content: `GET /api/storage?keys=plugins.{uuid}`
@@ -352,7 +362,14 @@ Column {
 
 ### 4.9 ServiceScreen
 
-**Status**: Placeholder UI only — "功能开发中..."
+**Status**: Fully implemented
+
+**Features**:
+- Server list with current server indicator (green "当前" badge)
+- Add server dialog (URL, alias, username, password with visibility toggle)
+- Switch server (confirmation → setDefault + setServer + clearToken → navigate to login)
+- Delete server (confirmation dialog)
+- Empty state with icon + instructions
 
 ### 4.10 SettingsScreen + SettingsViewModel
 
@@ -497,7 +514,8 @@ FenyongUserItem       { label, value, count }  // Unused
 | `com.squareup.okhttp3:okhttp-urlconnection` | 4.12.0 | URL connection bridge |
 | `com.google.code.gson:gson` | 2.12.1 | JSON parsing (lenient) |
 | `org.jetbrains.kotlinx:kotlinx-coroutines-android` | 1.9.0 | Coroutines |
-| `io.coil-kt.coil3:coil-compose` | 3.0.4 | Image loading (used minimally; custom ImageCache preferred) |
+| `io.coil-kt.coil3:coil-compose` | 3.0.4 | Image loading (plugin icons, task icons, order images) |
+| `io.coil-kt.coil3:coil-network-okhttp` | 3.0.4 | OkHttp network fetcher for Coil (JD Referer support) |
 
 ## 8. UI Component Library (AppComponents.kt)
 
@@ -510,22 +528,8 @@ FenyongUserItem       { label, value, count }  // Unused
 | `SiteChip` | site, color | Assisted chip for platform tags |
 | `MoneyText` | value | Formatted currency (¥X.XX / ¥X.XX万) |
 | `BigMoneyText` | value, color | Large formatted currency (displaySmall) |
+| `MiniAppBar` | title, navigationIcon?, actions | Shared 40dp top bar with Surface + Row layout |
 | `ListItemColors` | titleColor, subtitleColor? | Color customization for ListItemCard |
-
-### MiniAppBar (duplicated in 9 files)
-
-```kotlin
-@Composable
-private fun MiniAppBar(
-    title: @Composable () -> Unit,
-    navigationIcon: @Composable (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {},
-)
-```
-
-Defined in: `AppNavGraph.kt`, `ServerListScreen.kt`, `PluginScreens.kt`, `MastersScreen.kt`, `TasksScreen.kt`, `FenyongScreen.kt`, `StorageScreen.kt`, `ServiceScreen.kt`, `SettingsScreen.kt` — **should be extracted to AppComponents.kt**.
-
-**Note**: `if (actions != null)` condition removed — actions is non-nullable lambda with default `{}`.
 
 ## 9. CI/CD
 
@@ -596,24 +600,26 @@ See [PLUGIN_MANAGEMENT.md](PLUGIN_MANAGEMENT.md) for detailed design documentati
 | # | Issue | Location |
 |---|---|---|
 | 2 | **`AuthRepository.logout()` uses `runBlocking`** — blocks main thread from Compose | `AuthRepository.kt:54` |
-| 3 | **MiniAppBar duplicated** in 9 files — should be extracted to `AppComponents.kt` | `AppNavGraph.kt`, `ServerListScreen.kt`, `PluginScreens.kt`, `MastersScreen.kt`, `TasksScreen.kt`, `FenyongScreen.kt`, `StorageScreen.kt`, `ServiceScreen.kt`, `SettingsScreen.kt` |
-| 4 | **POST bodies use `Map<String, String>`** — not type-safe, should use data classes | `SillyGirlApi.kt` |
-| 5 | **ImageCache bypasses Coil** — hand-rolled singleton, no LRU eviction, no disk cache | `FenyongViewModel.kt:26-65` |
+| 3 | **POST bodies use `Map<String, String>`** — not type-safe, should use data classes | `SillyGirlApi.kt` |
+| 4 | **No unit tests** — no `src/test/` or `src/androidTest/` directories | — |
+| 5 | **`isMinifyEnabled = false`** — release build not shrunk | `build.gradle.kts:21` |
+| 6 | **`usesCleartextTraffic="true"`** — allows HTTP, should be HTTPS-only in production | `AndroidManifest.xml:13` |
 
 ### 🟢 Low Priority
 | # | Issue | Location |
 |---|---|---|
-| 6 | **No unit tests** — no `src/test/` or `src/androidTest/` directories | — |
-| 7 | **`isMinifyEnabled = false`** — release build not shrunk | `build.gradle.kts:21` |
-| 8 | **`FenyongTongjiResponse`/`FenyongTongjiData` models exist but are unused** — no API endpoint calls them | `Models.kt:96-121` |
-| 9 | **ServiceScreen is placeholder** — "功能开发中..." only | `ServiceScreen.kt` |
-| 10 | **`usesCleartextTraffic="true"`** — allows HTTP, should be HTTPS-only in production | `AndroidManifest.xml:13` |
+| 7 | **`FenyongTongjiResponse`/`FenyongTongjiData` models exist but are unused** — no API endpoint calls them | `Models.kt` |
 
 ### ✅ Recently Fixed
 | # | Issue | Fix |
 |---|---|---|
-| 11 | ~~**Duplicate import** in `MastersScreen.kt`~~ | Removed duplicate `kotlinx.coroutines.launch` import |
-| 12 | ~~**`setLenient()` deprecated** in `RetrofitClient.kt`~~ | Removed deprecated call |
-| 13 | ~~**`Icons.Filled.Logout` deprecated** in `SettingsScreen.kt`~~ | Changed to `Icons.AutoMirrored.Filled.Logout` |
-| 14 | ~~**`Icons.Filled.ReceiptLong` deprecated** in `FenyongScreen.kt`~~ | Changed to `Icons.AutoMirrored.Filled.ReceiptLong` |
-| 15 | ~~**`if (actions != null)` always true** (7 files)~~ | Removed condition, actions is non-nullable lambda |
+| 8 | ~~MiniAppBar duplicated in 9 files~~ | Extracted to shared `AppComponents.kt` MiniAppBar |
+| 9 | ~~ImageCache bypasses Coil~~ | Migrated to Coil 3 global loader, deleted custom ImageCache |
+| 10 | ~~ServiceScreen placeholder~~ | Full implementation: add/switch/delete servers |
+| 11 | ~~Plugin "非法操作" bug~~ | `asPluginId()` strips `/script/` prefix before API call |
+| 12 | ~~Plugin icon URL not displayed~~ | Coil 3 AsyncImage with `isIconUrl()` detection |
+| 13 | ~~Task list icon not showing~~ | Coil AsyncImage for `task.icons.firstOrNull()?.link` |
+| 14 | ~~TaskItemCard/MasterCard layout overflow~~ | `Column(weight(1f))` instead of `fillMaxWidth()` |
+| 15 | ~~No session expiry handling~~ | OkHttp 401/403 interceptor + DisposableEffect auto-redirect |
+| 16 | ~~Duplicate dashboard entries~~ | Removed 管理员/定时任务 from FeatureGrid |
+| 17 | ~~menuAnchor() deprecation~~ | Changed to `MenuAnchorType.PrimaryNotEditable` |
