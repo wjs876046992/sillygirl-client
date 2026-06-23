@@ -16,6 +16,9 @@ object RetrofitClient {
     private var _api: SillyGirlApi? = null
     private var _currentServer: String = ""
 
+    /** 会话过期回调 — 由 AppNavGraph 设置 */
+    var onSessionExpired: (() -> Unit)? = null
+
     val gson = GsonBuilder().create()
 
     /** 设置服务器地址并重建 Retrofit 实例 */
@@ -49,6 +52,17 @@ object RetrofitClient {
         chain.proceed(newRequest)
     }
 
+    /** 响应拦截器 — 检测会话过期 */
+    private val sessionInterceptor = Interceptor { chain ->
+        val response = chain.proceed(chain.request())
+        // 后端 401 或返回 success=false 且消息含"未授权"或"登录"时触发
+        if (response.code == 401 || response.code == 403) {
+            token = null
+            onSessionExpired?.invoke()
+        }
+        response
+    }
+
     private val logging = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BASIC
     }
@@ -56,6 +70,7 @@ object RetrofitClient {
     private val okHttpClient: OkHttpClient
         get() = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .addInterceptor(sessionInterceptor)
             .addInterceptor(logging)
             .cookieJar(JavaNetCookieJar(cookieManager))
             .connectTimeout(15, TimeUnit.SECONDS)

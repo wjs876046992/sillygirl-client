@@ -33,6 +33,7 @@ import com.sillygirl.client.ui.screens.storage.StorageScreen
 import com.sillygirl.client.ui.screens.serverlist.ServerListScreen
 import com.sillygirl.client.ui.screens.serverlist.ServerListViewModel
 import com.sillygirl.client.ui.screens.serverlist.ServerListViewModelFactory
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -61,13 +62,63 @@ fun AppNavGraph() {
 
     val defaultServer = serverConfig.getDefaultServer()
     var hasServer by remember { mutableStateOf(defaultServer != null) }
-    var isLoggedIn by remember { mutableStateOf(RetrofitClient.token != null && hasServer) }
+    var isVerifying by remember { mutableStateOf(true) } // 启动验证中
+    var isLoggedIn by remember { mutableStateOf(false) }
     var currentUser by remember { mutableStateOf<UserData?>(null) }
     var currentUserLoaded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(defaultServer, RetrofitClient.token) {
+    // 注册会话过期回调 — 任何 API 返回 401 时触发
+    DisposableEffect(Unit) {
+        RetrofitClient.onSessionExpired = {
+            // 在主线程处理导航（通过 coroutine）
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                currentUser = null
+                currentUserLoaded = false
+                isLoggedIn = false
+                navController.navigate(Routes.LOGIN) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+        }
+        onDispose {
+            RetrofitClient.onSessionExpired = null
+        }
+    }
+
+    // 启动时验证 token
+    LaunchedEffect(defaultServer) {
         hasServer = defaultServer != null
-        isLoggedIn = RetrofitClient.token != null && hasServer
+        if (!hasServer) {
+            isVerifying = false
+            return@LaunchedEffect
+        }
+
+        // 有服务器：尝试用保存的 token 验证
+        val savedToken = serverConfig.getToken()
+        if (savedToken == null) {
+            // 无 token，直接去登录
+            isLoggedIn = false
+            isVerifying = false
+            return@LaunchedEffect
+        }
+
+        // 有 token，尝试验证
+        RetrofitClient.token = savedToken
+        withContext(Dispatchers.IO) {
+            authRepo.verifySession()
+        }.fold(
+            onSuccess = {
+                isLoggedIn = true
+                isVerifying = false
+            },
+            onFailure = {
+                // token 过期，清除
+                serverConfig.clearToken()
+                RetrofitClient.token = null
+                isLoggedIn = false
+                isVerifying = false
+            }
+        )
     }
 
     // 加载用户信息并缓存
@@ -78,7 +129,14 @@ fun AppNavGraph() {
                     authRepo.getCurrentUserInfo()
                 }.fold(
                     onSuccess = { currentUser = it },
-                    onFailure = { /* ignore, dashboard will show error */ }
+                    onFailure = {
+                        // 用户信息加载失败，可能 token 已过期
+                        serverConfig.clearToken()
+                        RetrofitClient.token = null
+                        currentUser = null
+                        currentUserLoaded = false
+                        isLoggedIn = false
+                    }
                 )
             }
             currentUserLoaded = true
@@ -94,6 +152,18 @@ fun AppNavGraph() {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
+        // 启动验证中：显示加载动画
+        if (isVerifying && hasServer) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(12.dp))
+                    Text("正在验证登录状态...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            return@Scaffold
+        }
+
         NavHost(
             navController = navController,
             startDestination = startRoute,
