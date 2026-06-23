@@ -31,6 +31,7 @@ import com.sillygirl.client.ui.components.*
 import com.sillygirl.client.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
+import com.sillygirl.client.ui.components.MiniAppBar
 
 private val RedColor = Color(0xFFE60012)
 private val OrangeColor = Color(0xFFFF5000)
@@ -207,36 +208,6 @@ fun FenyongScreen(
     }
 }
 
-@Composable
-private fun MiniAppBar(
-    title: @Composable () -> Unit,
-    navigationIcon: @Composable (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {},
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (navigationIcon != null) {
-                navigationIcon()
-                Spacer(Modifier.width(8.dp))
-            }
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                title()
-            }
-            actions()
-        }
-    }
-}
-
-// ===== 订单卡片 =====
 @Composable
 fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
     val titleText = order.skuName.ifBlank { order.name }

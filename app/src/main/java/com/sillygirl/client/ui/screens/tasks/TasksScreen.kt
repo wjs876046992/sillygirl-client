@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.util.*
+import com.sillygirl.client.ui.components.MiniAppBar
 
 data class TasksUiState(
     val isLoading: Boolean = true,
@@ -167,35 +168,6 @@ fun TasksScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun MiniAppBar(
-    title: @Composable () -> Unit,
-    navigationIcon: @Composable (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {},
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (navigationIcon != null) {
-                navigationIcon()
-                Spacer(Modifier.width(8.dp))
-            }
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                title()
-            }
-            actions()
         }
     }
 }

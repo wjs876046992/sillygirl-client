@@ -23,6 +23,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sillygirl.client.ui.components.MiniAppBar
 
 data class StorageUiState(
     val isLoading: Boolean = false,
@@ -209,35 +210,6 @@ fun StorageScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun MiniAppBar(
-    title: @Composable () -> Unit,
-    navigationIcon: @Composable (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {},
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (navigationIcon != null) {
-                navigationIcon()
-                Spacer(Modifier.width(8.dp))
-            }
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                title()
-            }
-            actions()
         }
     }
 }

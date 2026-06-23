@@ -37,6 +37,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.sillygirl.client.ui.components.MiniAppBar
 
 object Routes {
     const val SERVER_LIST = "server_list"
@@ -311,35 +312,6 @@ fun AppNavGraph() {
             composable(Routes.STORAGE) {
                 StorageScreen(onBack = { navController.popBackStack() })
             }
-        }
-    }
-}
-
-@Composable
-private fun MiniAppBar(
-    title: @Composable () -> Unit,
-    navigationIcon: @Composable (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {},
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (navigationIcon != null) {
-                navigationIcon()
-                Spacer(Modifier.width(8.dp))
-            }
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                title()
-            }
-            actions()
         }
     }
 }
