@@ -38,7 +38,7 @@ class FenyongRepository {
             )
             Log.d(TAG, "Orders loaded: total=${response.total}, page=${response.page}, count=${response.data.size}")
             response.data.forEachIndexed { i, order ->
-                Log.d(TAG, "Order[$i]: name=${order.name}, sku=${order.skuName}, content=${order.content.size}")
+                Log.d(TAG, "Order[$i]: name=${order.name}, sku=${order.skuName}, image='${order.image}', site='${order.site}', content=${order.content.size}")
             }
             Result.success(response)
         } catch (e: Exception) {

@@ -64,7 +64,7 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("设置") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } })
+            MiniAppBar(title = { Text("设置") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } })
         },
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -128,6 +128,37 @@ fun SettingsScreen(
                 Icon(Icons.Filled.Logout, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("退出登录", style = MaterialTheme.typography.titleSmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniAppBar(
+    title: @Composable () -> Unit,
+    navigationIcon: @Composable (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (navigationIcon != null) {
+                navigationIcon()
+                Spacer(Modifier.width(8.dp))
+            }
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                title()
+            }
+            if (actions != null) {
+                actions()
             }
         }
     }

@@ -80,7 +80,7 @@ fun GlassCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White.copy(alpha = 0.95f), RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
         ) {
             Content(modifier = Modifier.padding(16.dp), content = content)
         }

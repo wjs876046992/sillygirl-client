@@ -97,7 +97,7 @@ fun MastersScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            MiniAppBar(
                 title = { Text("管理员") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
                 actions = {
@@ -197,4 +197,35 @@ private fun AddMasterDialog(onDismiss: () -> Unit, onAdded: () -> Unit) {
             TextButton(onClick = onDismiss) { Text("取消") }
         },
     )
+}
+
+@Composable
+private fun MiniAppBar(
+    title: @Composable () -> Unit,
+    navigationIcon: @Composable (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (navigationIcon != null) {
+                navigationIcon()
+                Spacer(Modifier.width(8.dp))
+            }
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                title()
+            }
+            if (actions != null) {
+                actions()
+            }
+        }
+    }
 }

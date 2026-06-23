@@ -31,6 +31,18 @@ class MainActivity : ComponentActivity() {
         // Initialize ServerConfig
         serverConfig = ServerConfig(this)
 
+        // 测试阶段：如果无服务器记录，自动添加测试服务器
+        if (serverConfig.getServers().isEmpty()) {
+            try {
+                serverConfig.addServer(ServerConfig.ServerInfo(
+                    url = "http://192.168.1.12:8081",
+                    username = "silly",
+                    password = "yKAuGG58S4zKHS",
+                    alias = "测试服务器(ForTest)",
+                ))
+            } catch (_: Exception) { }
+        }
+
         // Auto-set server from saved config, restore token
         serverConfig.getDefaultServer()?.let {
             RetrofitClient.setServer(it.url)

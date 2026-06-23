@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -24,8 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.launch
-import coil3.compose.AsyncImage
 import com.sillygirl.client.ui.components.*
 import com.sillygirl.client.ui.theme.*
 import java.text.SimpleDateFormat
@@ -66,7 +65,6 @@ fun FenyongScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(uiState.error) {
         val msg = uiState.error ?: return@LaunchedEffect
@@ -76,7 +74,7 @@ fun FenyongScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            MiniAppBar(
                 title = { Text("分佣系统") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -151,6 +149,37 @@ fun FenyongScreen(
     }
 }
 
+@Composable
+private fun MiniAppBar(
+    title: @Composable () -> Unit,
+    navigationIcon: @Composable (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (navigationIcon != null) {
+                navigationIcon()
+                Spacer(Modifier.width(8.dp))
+            }
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                title()
+            }
+            if (actions != null) {
+                actions()
+            }
+        }
+    }
+}
+
 // ===== 订单卡片 =====
 @Composable
 fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
@@ -170,31 +199,7 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            // 商品图（固定尺寸）
-            val hasImage = order.image.isNotBlank() && 
-                !order.image.endsWith(".ico", ignoreCase = true) &&
-                order.image.startsWith("http")
-            if (hasImage) {
-                AsyncImage(
-                    model = order.image,
-                    contentDescription = null,
-                    modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)),
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
-                Box(
-                    modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    val placeholderIcon = when (order.site.lowercase()) {
-                        "jd" -> "🔴"  // 京东红
-                        "tb" -> "🟠"  // 淘宝橙
-                        "pdd" -> "🔴"  // 拼多多红
-                        else -> "🛒"
-                    }
-                    Text(placeholderIcon, fontSize = 28.sp)
-                }
-            }
+            OrderItemImage(order.image, order.site)
 
             // 信息（固定高度列）
             Column(
@@ -248,6 +253,35 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
             ) {
                 Text("实际", style = MaterialTheme.typography.labelSmall, color = GrayText)
                 Text("¥$actualAmount", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = SuccessColor)
+            }
+        }
+    }
+}
+
+// ===== 商品图（只读缓存） =====
+@Composable
+private fun OrderItemImage(url: String, site: String) {
+    val cachedPainter = ImageCache.get(url)
+    val hasImage = url.isNotBlank() && !url.endsWith(".ico", ignoreCase = true)
+
+    Box(
+        modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (hasImage && cachedPainter != null) {
+            androidx.compose.foundation.Image(
+                painter = cachedPainter,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            val platformColor = getPlatformColor(site)
+            Box(
+                modifier = Modifier.fillMaxSize().background(platformColor.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(getPlatformName(site).first().toString(), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = platformColor)
             }
         }
     }

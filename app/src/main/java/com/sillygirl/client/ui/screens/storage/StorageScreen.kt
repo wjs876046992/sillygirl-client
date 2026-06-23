@@ -100,7 +100,7 @@ fun StorageScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            MiniAppBar(
                 title = { Text("存储管理") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
                 actions = { IconButton(onClick = { viewModel.loadKeys() }) { Icon(Icons.Filled.Refresh, "刷新") } }
@@ -110,7 +110,7 @@ fun StorageScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(p).padding(14.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -177,6 +177,37 @@ fun StorageScreen(
                         Text(ui.error!!, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniAppBar(
+    title: @Composable () -> Unit,
+    navigationIcon: @Composable (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (navigationIcon != null) {
+                navigationIcon()
+                Spacer(Modifier.width(8.dp))
+            }
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                title()
+            }
+            if (actions != null) {
+                actions()
             }
         }
     }

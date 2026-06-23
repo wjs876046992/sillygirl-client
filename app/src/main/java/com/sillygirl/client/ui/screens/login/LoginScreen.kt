@@ -1,6 +1,7 @@
 package com.sillygirl.client.ui.screens.login
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,6 +28,11 @@ import com.sillygirl.client.LocalServerConfig
 import com.sillygirl.client.ui.theme.PrimaryGradientColors
 import com.sillygirl.client.ui.screens.login.LoginViewModelFactory
 
+// 测试配置（仅 debug 阶段使用）
+private val TEST_SERVER_URL = "http://192.168.1.12:8081"
+private val TEST_USERNAME = "silly"
+private val TEST_PASSWORD = "yKAuGG58S4zKHS"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -36,6 +42,13 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var passwordVisible by remember { mutableStateOf(false) }
 
+    // 自动填充测试配置
+    LaunchedEffect(Unit) {
+        viewModel.updateServerUrl(TEST_SERVER_URL)
+        viewModel.updateUsername(TEST_USERNAME)
+        viewModel.updatePassword(TEST_PASSWORD)
+    }
+
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) onLoginSuccess()
     }
@@ -43,17 +56,21 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFF8F9FC), Color(0xFFEEF0F6))))
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        // 顶部渐变装饰
+        // 顶部渐变装饰（暗色模式下更柔和）
+        val gradientAlpha = if (isSystemInDarkTheme()) 0.35f else 0.6f
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
                 .align(Alignment.TopCenter)
-                .offset(y = (-40).dp)
-                .size(280.dp)
+                .offset(y = (-30).dp)
+                .size(240.dp)
                 .clip(RoundedCornerShape(50))
-                .background(Brush.horizontalGradient(PrimaryGradientColors))
+                .background(
+                    brush = Brush.horizontalGradient(PrimaryGradientColors),
+                    shape = RoundedCornerShape(50),
+                )
                 .shadow(40.dp, RoundedCornerShape(50)),
         )
 
@@ -61,22 +78,30 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)
-                .padding(top = 100.dp, bottom = 40.dp),
+                .padding(top = 80.dp, bottom = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
             // Logo / App name
-            Box(
+            Card(
                 modifier = Modifier
                     .size(72.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center,
+                    .shadow(12.dp, RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
             ) {
-                Text("🤖", fontSize = 36.sp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("🤖", fontSize = 36.sp)
+                }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(16.dp))
 
             Text(
                 "SillyGirl",

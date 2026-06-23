@@ -2,7 +2,6 @@ package com.sillygirl.client.ui.screens.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sillygirl.client.data.repository.AuthRepository
 import com.sillygirl.client.data.repository.MasterRepository
 import com.sillygirl.client.data.repository.TaskRepository
 import com.sillygirl.client.data.repository.FenyongRepository
@@ -24,10 +23,10 @@ data class DashboardUiState(
 )
 
 class DashboardViewModel : ViewModel() {
-    private val authRepo = AuthRepository()
     private val masterRepo = MasterRepository()
     private val taskRepo = TaskRepository()
     private val fenyongRepo = FenyongRepository()
+
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
@@ -35,11 +34,10 @@ class DashboardViewModel : ViewModel() {
         loadDashboard()
     }
 
-    fun loadDashboard() {
+    fun loadDashboard(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isLoading = !forceRefresh, error = null)
             try {
-                val userResult = authRepo.getCurrentUserInfo()
                 var masters = 0
                 var tasks = 0
                 var fenyongDashboard: FenyongDashboardResponse? = null
@@ -48,28 +46,11 @@ class DashboardViewModel : ViewModel() {
                 try { tasks = taskRepo.getTasks().getOrThrow().count { it.enable } } catch (_: Exception) {}
                 try { fenyongDashboard = fenyongRepo.getDashboard().getOrThrow() } catch (_: Exception) {}
 
-                userResult.fold(
-                    onSuccess = { user ->
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            userName = user.name.ifBlank { "管理员" },
-                            avatar = user.avatar,
-                            installedPlugins = user.plugins.size,
-                            masterCount = masters,
-                            activeTaskCount = tasks,
-                            fenyongDashboard = fenyongDashboard,
-                        )
-                    },
-                    onFailure = { e ->
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            userName = "管理员",
-                            masterCount = masters,
-                            activeTaskCount = tasks,
-                            fenyongDashboard = fenyongDashboard,
-                            error = e.message ?: "加载失败",
-                        )
-                    }
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    masterCount = masters,
+                    activeTaskCount = tasks,
+                    fenyongDashboard = fenyongDashboard,
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

@@ -3,182 +3,112 @@ package com.sillygirl.client.ui.screens.dashboard
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sillygirl.client.data.model.UserData
 import com.sillygirl.client.ui.components.*
 import com.sillygirl.client.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
+    currentUser: UserData? = null,
     onNavigateToFenyong: () -> Unit = {},
-    onNavigateToMyPlugins: () -> Unit = {},
     onNavigateToPluginMarket: () -> Unit = {},
     onNavigateToMasters: () -> Unit = {},
     onNavigateToTasks: () -> Unit = {},
     onNavigateToService: () -> Unit = {},
     onNavigateToStorage: () -> Unit = {},
-    onNavigateToSettings: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val name = currentUser?.name ?: uiState.userName
+    val installedPlugins = currentUser?.plugins?.size ?: uiState.installedPlugins
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("SillyGirl", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("管理面板", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.loadDashboard() }) {
-                        Icon(Icons.Filled.Refresh, "刷新")
-                    }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Filled.Settings, "设置")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { padding ->
-        if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+    if (uiState.isLoading) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item { WelcomeHeader(name = name) }
+
+            item {
+                FenyongOverviewCard(uiState.fenyongDashboard, onNavigateToFenyong)
             }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                WelcomeHeader(name = uiState.userName)
 
-                // 统计卡片区（两行）
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatNumberCard(
-                        Modifier.weight(1f),
-                        icon = Icons.Filled.Extension,
-                        iconColor = Color(0xFF667EEA),
-                        value = "${uiState.installedPlugins}",
-                        label = "已安装插件",
-                        onClick = onNavigateToMyPlugins,
-                    )
-                    StatNumberCard(
-                        Modifier.weight(1f),
-                        icon = Icons.Filled.People,
-                        iconColor = Color(0xFF52C41A),
-                        value = "${uiState.masterCount}",
-                        label = "管理员",
-                        onClick = onNavigateToMasters,
-                    )
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    MetricGridCard(Icons.Filled.Extension, "$installedPlugins", Color(0xFF667EEA), Modifier.weight(1f))
+                    MetricGridCard(Icons.Filled.People, "${uiState.masterCount}", Color(0xFF52C41A), Modifier.weight(1f))
+                    MetricGridCard(Icons.Filled.Schedule, "${uiState.activeTaskCount}", Color(0xFFF59E0B), Modifier.weight(1f))
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatNumberCard(
-                        Modifier.weight(1f),
-                        icon = Icons.Filled.Schedule,
-                        iconColor = Color(0xFFF59E0B),
-                        value = "${uiState.activeTaskCount}",
-                        label = "运行中任务",
-                        onClick = onNavigateToTasks,
-                    )
-                }
+            }
 
-                // 分佣统计卡片（从首页进入分佣页）
-                uiState.fenyongDashboard?.let { dash ->
-                    GlassCard(
-                        onClick = onNavigateToFenyong,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column {
-                            // 顶部：标题 + 箭头
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(12.dp)),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text("💰", fontSize = 18.sp)
-                                }
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text("分佣系统", fontWeight = FontWeight.Bold)
-                                    Text(
-                                        "今日 ¥${feyMoney(dash.today.estimate)} · 7天 ¥${feyMoney(dash.last7days.estimate)}",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                                Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Spacer(Modifier.height(12.dp))
-
-                            // 三列统计：一行三个
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                MiniStat("今日", "¥${feyMoney(dash.today.estimate)}")
-                                MiniStat("7天", "¥${feyMoney(dash.last7days.estimate)}")
-                                MiniStat("本月", "¥${feyMoney(dash.lastMonth.estimate)}")
-                            }
-                            Spacer(Modifier.height(8.dp))
-
-                            // 三列统计：一行三个
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                MiniStat("已结算", "¥${feyMoney(dash.totalSettled)}")
-                                MiniStat("待结算", "¥${feyMoney(dash.totalUnsettled)}")
-                                MiniStat("总订单", feyInt(dash.totalOrders))
-                            }
-                        }
-                    }
-                }
-
-                // 快捷功能图标网格（紧凑排列）
-                QuickActionGrid(
-                    onNavigateToFenyong, onNavigateToPluginMarket, onNavigateToStorage,
-                    onNavigateToService, onNavigateToMasters, onNavigateToTasks,
+            item {
+                FeatureGrid(
+                    onNavigateToPluginMarket,
+                    onNavigateToStorage,
+                    onNavigateToService,
+                    onNavigateToMasters,
+                    onNavigateToTasks,
                 )
+            }
 
-                if (uiState.error != null) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+            if (uiState.error != null) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(4.dp, RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(12.dp)),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Error, null, tint = MaterialTheme.colorScheme.error)
-                            Spacer(Modifier.width(8.dp))
-                            Text(uiState.error!!, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+                        Box(
+                            modifier = Modifier
+                                .padding(14.dp)
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Filled.Error,
+                                null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
                         }
+                        Text(
+                            uiState.error!!,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 14.dp),
+                        )
                     }
                 }
             }
@@ -186,39 +116,182 @@ fun DashboardScreen(
     }
 }
 
+// ===== 欢迎 =====
 @Composable
 private fun WelcomeHeader(name: String) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(20.dp))
-                .padding(24.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Brush.horizontalGradient(PrimaryGradientColors))
         ) {
             Box(
                 modifier = Modifier
+                    .size(70.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.07f))
                     .align(Alignment.TopEnd)
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(50.dp))
-                    .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(50.dp)),
+                    .offset(x = 14.dp, y = (-14).dp)
             )
-            Column {
-                Text("欢迎回来 👋", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.05f))
+                    .align(Alignment.BottomEnd)
+                    .offset(x = (-10).dp, y = 10.dp)
+            )
+
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+            ) {
+                Text(
+                    "你好，$name",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                )
                 Spacer(Modifier.height(4.dp))
-                Text(name, style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold)
-                Text("SillyGirl 管理助手", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
+                Text(
+                    "SillyGirl 管理助手",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.75f),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun QuickActionGrid(
-    onNavigateToFenyong: () -> Unit,
+private fun MetricGridCard(icon: ImageVector, value: String, color: Color, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier
+            .shadow(4.dp, RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(14.dp)),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(14.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, null, modifier = Modifier.size(24.dp), tint = color)
+            }
+            Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = color)
+        }
+    }
+}
+
+@Composable
+private fun FixedSiteCard(siteName: String, amount: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .height(48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(siteName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+            Spacer(Modifier.height(2.dp))
+            Text(amount, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+// ===== 分佣概览 =====
+@Composable
+private fun FenyongOverviewCard(dash: com.sillygirl.client.data.model.FenyongDashboardResponse?, onClick: () -> Unit) {
+    if (dash == null) return
+
+    GlassCard(
+        onClick = onClick,
+        modifier = Modifier.widthIn(min = 120.dp).heightIn(min = 130.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(7.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("💰", fontSize = 12.sp)
+                }
+                Spacer(Modifier.width(5.dp))
+                Text("分佣", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                null,
+                modifier = Modifier.rotate(-45f).size(13.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+            )
+        }
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("今日", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                Spacer(Modifier.height(2.dp))
+                Text(feyMoney(dash.today.estimate), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("7天", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                Spacer(Modifier.height(2.dp))
+                Text(feyMoney(dash.last7days.estimate), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("本月", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                Spacer(Modifier.height(2.dp))
+                Text(feyMoney(dash.lastMonth.estimate), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+
+        val sites = dash.platforms.entries.toList()
+        if (sites.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(8.dp))
+            val chunks = sites.chunked(3)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (chunk in chunks) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        for ((i, site) in chunk.withIndex()) {
+                            val (siteName, stats) = site
+                            FixedSiteCard(siteName, feyMoney(stats.estimate), modifier = Modifier.weight(1f))
+                            if (i < chunk.lastIndex) Spacer(Modifier.width(8.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ===== 功能网格 3x3 =====
+@Composable
+private fun FeatureGrid(
     onNavigateToPluginMarket: () -> Unit,
     onNavigateToStorage: () -> Unit,
     onNavigateToService: () -> Unit,
@@ -226,71 +299,69 @@ private fun QuickActionGrid(
     onNavigateToTasks: () -> Unit,
 ) {
     val actions = listOf(
-        QuickAction(Icons.Filled.Paid, "分佣", onNavigateToFenyong, PrimaryGradientColors),
-        QuickAction(Icons.Filled.Extension, "插件市场", onNavigateToPluginMarket, listOf(Color(0xFF5CC3FF), Color(0xFF4FACFE))),
-        QuickAction(Icons.Filled.Storage, "存储", onNavigateToStorage, listOf(Color(0xFF22C55E), Color(0xFF10B981))),
-        QuickAction(Icons.Filled.Dns, "服务", onNavigateToService, listOf(Color(0xFFF59E0B), Color(0xFFF97316))),
-        QuickAction(Icons.Filled.People, "管理员", onNavigateToMasters, listOf(Color(0xFF8B5CF6), Color(0xFF7C3AED))),
-        QuickAction(Icons.Filled.Schedule, "定时任务", onNavigateToTasks, listOf(Color(0xFFEF4444), Color(0xFFF43F5E))),
+        FeatureItem(Icons.Filled.Extension, "插件市场", onNavigateToPluginMarket, Color(0xFF667EEA)),
+        FeatureItem(Icons.Filled.People, "管理员", onNavigateToMasters, Color(0xFF8B5CF6)),
+        FeatureItem(Icons.Filled.Storage, "存储", onNavigateToStorage, Color(0xFF22C55E)),
+        FeatureItem(Icons.Filled.Dns, "服务", onNavigateToService, Color(0xFFF59E0B)),
+        FeatureItem(Icons.Filled.Schedule, "定时任务", onNavigateToTasks, Color(0xFFEF4444)),
     )
 
-    // 3列网格布局：每行固定3个图标
-    for (i in actions.indices step 3) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            for (j in 0 until 3) {
-                val idx = i + j
-                if (idx < actions.size) {
-                    QuickActionItem(actions[idx], Modifier.weight(1f))
-                } else {
-                    Spacer(Modifier.weight(1f))
-                }
+    val gridItems = actions.chunked(3)
+
+    for ((rowIdx, rowItems) in gridItems.withIndex()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            for (item in rowItems) {
+                FeatureCard(item, modifier = Modifier.weight(1f))
             }
         }
-        if (i + 3 < actions.size) {
-            Spacer(Modifier.height(12.dp))
-        }
+        if (rowIdx < gridItems.size - 1) Spacer(Modifier.height(12.dp))
     }
 }
 
-data class QuickAction(val icon: ImageVector, val label: String, val onClick: () -> Unit, val colors: List<Color>)
+data class FeatureItem(val icon: ImageVector, val label: String, val onClick: () -> Unit, val color: Color)
 
 @Composable
-private fun QuickActionItem(action: QuickAction, modifier: Modifier = Modifier) {
-    GlassCard(
+private fun FeatureCard(
+    item: FeatureItem,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
         modifier = modifier
-            .clickable(onClick = action.onClick)
-            .padding(8.dp),
+            .shadow(4.dp, RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White.copy(alpha = 0.02f), RoundedCornerShape(14.dp))
+            .clickable(onClick = item.onClick),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(14.dp),
+        ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Brush.linearGradient(action.colors), RoundedCornerShape(10.dp)),
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(item.color.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    action.icon, null,
-                    modifier = Modifier.size(18.dp),
-                    tint = Color.White,
+                    item.icon,
+                    null,
+                    modifier = Modifier.size(24.dp),
+                    tint = item.color,
                 )
             }
-            Spacer(Modifier.height(6.dp))
-            Text(action.label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
+            Text(
+                item.label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
         }
-    }
-}
-
-@Composable
-private fun MiniStat(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 private fun feyMoney(v: Double) = if (v >= 10000) String.format("%.1f万", v / 10000) else String.format("%.2f", v)
-private fun feyInt(v: Int) = if (v >= 10000) String.format("%.1f万", v / 10000.0) else "$v"

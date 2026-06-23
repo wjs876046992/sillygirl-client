@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
@@ -15,6 +16,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.sillygirl.client.LocalServerConfig
 import com.sillygirl.client.data.api.RetrofitClient
+import com.sillygirl.client.data.model.UserData
+import com.sillygirl.client.data.repository.AuthRepository
 import com.sillygirl.client.data.repository.ServerConfig
 import com.sillygirl.client.ui.screens.dashboard.DashboardScreen
 import com.sillygirl.client.ui.screens.fenyong.FenyongScreen
@@ -29,6 +32,9 @@ import com.sillygirl.client.ui.screens.storage.StorageScreen
 import com.sillygirl.client.ui.screens.serverlist.ServerListScreen
 import com.sillygirl.client.ui.screens.serverlist.ServerListViewModel
 import com.sillygirl.client.ui.screens.serverlist.ServerListViewModelFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 object Routes {
     const val SERVER_LIST = "server_list"
@@ -44,32 +50,37 @@ object Routes {
     const val STORAGE = "storage"
 }
 
-// ===== 底部导航项 =====
-data class BottomNavItem(
-    val route: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val label: String,
-)
-
-val mainNavItems = listOf(
-    BottomNavItem(Routes.DASHBOARD, Icons.Filled.Home, "首页"),
-    BottomNavItem(Routes.FENYONG, Icons.Filled.Paid, "分佣"),
-    BottomNavItem(Routes.PLUGIN_MARKET, Icons.Filled.Extension, "插件"),
-    BottomNavItem(Routes.MASTERS, Icons.Filled.People, "我的"),
-)
-
 @Composable
 fun AppNavGraph() {
     val navController = rememberNavController()
     val serverConfig = LocalServerConfig.current
+    val authRepo = remember { AuthRepository() }
+    val scope = rememberCoroutineScope()
 
     val defaultServer = serverConfig.getDefaultServer()
     var hasServer by remember { mutableStateOf(defaultServer != null) }
     var isLoggedIn by remember { mutableStateOf(RetrofitClient.token != null && hasServer) }
+    var currentUser by remember { mutableStateOf<UserData?>(null) }
+    var currentUserLoaded by remember { mutableStateOf(false) }
 
     LaunchedEffect(defaultServer, RetrofitClient.token) {
         hasServer = defaultServer != null
         isLoggedIn = RetrofitClient.token != null && hasServer
+    }
+
+    // 加载用户信息并缓存
+    LaunchedEffect(isLoggedIn, currentUserLoaded) {
+        if (isLoggedIn && !currentUserLoaded) {
+            scope.launch {
+                withContext(Dispatchers.IO) {
+                    authRepo.getCurrentUserInfo()
+                }.fold(
+                    onSuccess = { currentUser = it },
+                    onFailure = { /* ignore, dashboard will show error */ }
+                )
+            }
+            currentUserLoaded = true
+        }
     }
 
     val startRoute = when {
@@ -79,30 +90,7 @@ fun AppNavGraph() {
     }
 
     Scaffold(
-        bottomBar = {
-            if (isLoggedIn && hasServer) {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 8.dp,
-                ) {
-                    mainNavItems.forEach { item ->
-                        NavigationBarItem(
-                            icon = { Icon(item.icon, item.label) },
-                            label = { Text(item.label) },
-                            selected = navController.currentBackStackEntry?.destination?.route == item.route,
-                            onClick = {
-                                if (navController.currentBackStackEntry?.destination?.route != item.route) {
-                                    navController.navigate(item.route) {
-                                        popUpTo(startRoute) { inclusive = true }
-                                        launchSingleTop = true
-                                    }
-                                }
-                            },
-                        )
-                    }
-                }
-            }
-        },
+        containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         NavHost(
             navController = navController,
@@ -145,16 +133,33 @@ fun AppNavGraph() {
             }
 
             composable(Routes.DASHBOARD) {
-                DashboardScreen(
-                    onNavigateToFenyong = { navController.navigate(Routes.FENYONG) },
-                    onNavigateToMyPlugins = { navController.navigate(Routes.MY_PLUGINS) },
-                    onNavigateToPluginMarket = { navController.navigate(Routes.PLUGIN_MARKET) },
-                    onNavigateToMasters = { navController.navigate(Routes.MASTERS) },
-                    onNavigateToTasks = { navController.navigate(Routes.TASKS) },
-                    onNavigateToService = { navController.navigate(Routes.SERVICE) },
-                    onNavigateToStorage = { navController.navigate(Routes.STORAGE) },
-                    onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
-                )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    Column {
+                        MiniAppBar(
+                            title = { Text("SillyGirl") },
+                            actions = {
+                                IconButton(onClick = {  /*reload*/  }) {
+                                    Icon(Icons.Filled.Refresh, "刷新")
+                                }
+                                IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
+                                    Icon(Icons.Filled.Settings, "设置")
+                                }
+                            },
+                        )
+                        DashboardScreen(
+                            currentUser = currentUser,
+                            onNavigateToFenyong = { navController.navigate(Routes.FENYONG) },
+                            onNavigateToPluginMarket = { navController.navigate(Routes.PLUGIN_MARKET) },
+                            onNavigateToMasters = { navController.navigate(Routes.MASTERS) },
+                            onNavigateToTasks = { navController.navigate(Routes.TASKS) },
+                            onNavigateToService = { navController.navigate(Routes.SERVICE) },
+                            onNavigateToStorage = { navController.navigate(Routes.STORAGE) },
+                        )
+                    }
+                }
             }
 
             composable(Routes.SETTINGS) {
@@ -197,6 +202,35 @@ fun AppNavGraph() {
             composable(Routes.STORAGE) {
                 StorageScreen(onBack = { navController.popBackStack() })
             }
+        }
+    }
+}
+
+@Composable
+private fun MiniAppBar(
+    title: @Composable () -> Unit,
+    navigationIcon: @Composable (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (navigationIcon != null) {
+                navigationIcon()
+                Spacer(Modifier.width(8.dp))
+            }
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                title()
+            }
+            actions()
         }
     }
 }

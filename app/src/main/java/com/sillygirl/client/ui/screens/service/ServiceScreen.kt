@@ -19,7 +19,7 @@ import com.sillygirl.client.ui.theme.PrimaryGradientColors
 @Composable
 fun ServiceScreen(onBack: () -> Unit) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text("服务") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } }) },
+        topBar = { MiniAppBar(title = { Text("服务") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } }) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { p ->
         Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
@@ -34,6 +34,37 @@ fun ServiceScreen(onBack: () -> Unit) {
                 Text("服务管理", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text("功能开发中...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniAppBar(
+    title: @Composable () -> Unit,
+    navigationIcon: @Composable (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (navigationIcon != null) {
+                navigationIcon()
+                Spacer(Modifier.width(8.dp))
+            }
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                title()
+            }
+            if (actions != null) {
+                actions()
             }
         }
     }
