@@ -33,6 +33,7 @@ fun DashboardScreen(
     currentUser: UserData? = null,
     onNavigateToFenyong: () -> Unit = {},
     onNavigateToPluginMarket: () -> Unit = {},
+    onNavigateToMyPlugins: () -> Unit = {},
     onNavigateToMasters: () -> Unit = {},
     onNavigateToTasks: () -> Unit = {},
     onNavigateToService: () -> Unit = {},
@@ -61,9 +62,27 @@ fun DashboardScreen(
 
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    MetricGridCard(Icons.Filled.Extension, "$installedPlugins", Color(0xFF667EEA), Modifier.weight(1f))
-                    MetricGridCard(Icons.Filled.People, "${uiState.masterCount}", Color(0xFF52C41A), Modifier.weight(1f))
-                    MetricGridCard(Icons.Filled.Schedule, "${uiState.activeTaskCount}", Color(0xFFF59E0B), Modifier.weight(1f))
+                    MetricGridCard(
+                        icon = Icons.Filled.Extension,
+                        value = "$installedPlugins",
+                        color = Color(0xFF667EEA),
+                        modifier = Modifier.weight(1f),
+                        onClick = onNavigateToMyPlugins,
+                    )
+                    MetricGridCard(
+                        icon = Icons.Filled.People,
+                        value = "${uiState.masterCount}",
+                        color = Color(0xFF52C41A),
+                        modifier = Modifier.weight(1f),
+                        onClick = onNavigateToMasters,
+                    )
+                    MetricGridCard(
+                        icon = Icons.Filled.Schedule,
+                        value = "${uiState.activeTaskCount}",
+                        color = Color(0xFFF59E0B),
+                        modifier = Modifier.weight(1f),
+                        onClick = onNavigateToTasks,
+                    )
                 }
             }
 
@@ -170,11 +189,18 @@ private fun WelcomeHeader(name: String) {
 }
 
 @Composable
-private fun MetricGridCard(icon: ImageVector, value: String, color: Color, modifier: Modifier = Modifier) {
+private fun MetricGridCard(
+    icon: ImageVector,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
+) {
     Surface(
         modifier = modifier
             .shadow(4.dp, RoundedCornerShape(14.dp))
-            .clip(RoundedCornerShape(14.dp)),
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
@@ -299,7 +325,7 @@ private fun FeatureGrid(
     onNavigateToTasks: () -> Unit,
 ) {
     val actions = listOf(
-        FeatureItem(Icons.Filled.Extension, "插件市场", onNavigateToPluginMarket, Color(0xFF667EEA)),
+        FeatureItem(Icons.Filled.Store, "插件市场", onNavigateToPluginMarket, Color(0xFF667EEA)),
         FeatureItem(Icons.Filled.People, "管理员", onNavigateToMasters, Color(0xFF8B5CF6)),
         FeatureItem(Icons.Filled.Storage, "存储", onNavigateToStorage, Color(0xFF22C55E)),
         FeatureItem(Icons.Filled.Dns, "服务", onNavigateToService, Color(0xFFF59E0B)),

@@ -32,6 +32,42 @@ data class PluginRoute(
     val name: String = "",
     val component: String = "",
     @SerializedName("create_at") val createAt: String? = null,
+    val title: String = "",
+    val description: String = "",
+    val icon: String = "",
+    val version: String = "v1.0.0",
+    val author: String = "",
+    val running: Boolean = false,
+    val disable: Boolean = false,
+    val debug: Boolean = false,
+    @SerializedName("has_form") val hasForm: Boolean = false,
+    val classes: List<String> = emptyList(),
+)
+
+data class PluginDetailResponse(
+    val success: Boolean = false,
+    val data: PluginDetail? = null,
+)
+
+data class PluginDetail(
+    val uuid: String = "",
+    val content: String = "",
+    val form: List<PluginFormField> = emptyList(),
+    val debug: Boolean = false,
+    val disable: Boolean = false,
+)
+
+data class PluginFormField(
+    val key: String = "",
+    val label: String = "",
+    val type: String = "text", // text, number, switch, select
+    val value: Any? = null,
+    val options: List<PluginFormOption> = emptyList(),
+)
+
+data class PluginFormOption(
+    val label: String = "",
+    val value: String = "",
 )
 
 data class PluginListResponse(

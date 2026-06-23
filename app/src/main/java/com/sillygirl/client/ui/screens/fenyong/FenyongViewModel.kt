@@ -71,6 +71,7 @@ data class FenyongUiState(
     val orders: List<FenyongOrder> = emptyList(),
     val page: Int = 1,
     val total: Int = 0,
+    val filterActualGtZero: Boolean = false,
 )
 
 class FenyongViewModel : ViewModel() {
@@ -140,6 +141,12 @@ class FenyongViewModel : ViewModel() {
 
     fun loadData() {
         loadOrders(1)
+    }
+
+    fun toggleFilterActualGtZero() {
+        _uiState.value = _uiState.value.copy(
+            filterActualGtZero = !_uiState.value.filterActualGtZero
+        )
     }
 
     fun clearError() {

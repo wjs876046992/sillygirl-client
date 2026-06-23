@@ -1,7 +1,6 @@
 package com.sillygirl.client.ui.screens.login
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -58,22 +57,6 @@ fun LoginScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        // 顶部渐变装饰（暗色模式下更柔和）
-        val gradientAlpha = if (isSystemInDarkTheme()) 0.35f else 0.6f
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.6f)
-                .align(Alignment.TopCenter)
-                .offset(y = (-30).dp)
-                .size(240.dp)
-                .clip(RoundedCornerShape(50))
-                .background(
-                    brush = Brush.horizontalGradient(PrimaryGradientColors),
-                    shape = RoundedCornerShape(50),
-                )
-                .shadow(40.dp, RoundedCornerShape(50)),
-        )
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -82,22 +65,36 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            // Logo / App name
-            Card(
-                modifier = Modifier
-                    .size(72.dp)
-                    .shadow(12.dp, RoundedCornerShape(20.dp)),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-            ) {
+            // Logo area: gradient glow + icon as a unified group
+            Box(contentAlignment = Alignment.Center) {
+                // Decorative gradient glow behind icon
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(20.dp)),
-                    contentAlignment = Alignment.Center,
+                        .size(150.dp)
+                        .shadow(30.dp, RoundedCornerShape(50))
+                        .clip(RoundedCornerShape(50))
+                        .background(
+                            brush = Brush.horizontalGradient(PrimaryGradientColors),
+                            shape = RoundedCornerShape(50),
+                        ),
+                )
+                // Icon card
+                Card(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .shadow(12.dp, RoundedCornerShape(20.dp)),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                 ) {
-                    Text("🤖", fontSize = 36.sp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Brush.horizontalGradient(PrimaryGradientColors), RoundedCornerShape(20.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("🤖", fontSize = 36.sp)
+                    }
                 }
             }
 
@@ -202,10 +199,14 @@ fun LoginScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .shadow(8.dp, RoundedCornerShape(14.dp)),
+                    .shadow(8.dp, RoundedCornerShape(14.dp))
+                    .background(
+                        brush = Brush.horizontalGradient(PrimaryGradientColors),
+                        shape = RoundedCornerShape(14.dp),
+                    ),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
+                    containerColor = Color.Transparent,
                 ),
             ) {
                 if (uiState.isLoading) {

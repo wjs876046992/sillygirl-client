@@ -3,7 +3,9 @@ package com.sillygirl.client.ui.screens.plugins
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sillygirl.client.data.api.RetrofitClient
+import com.sillygirl.client.data.model.PluginDetail
 import com.sillygirl.client.data.model.PluginInfo
+import com.sillygirl.client.data.model.PluginRoute
 import com.sillygirl.client.data.repository.PluginRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +16,15 @@ import kotlinx.coroutines.launch
 data class MyPluginsUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
-    val plugins: List<PluginInfo> = emptyList(),
+    val plugins: List<PluginRoute> = emptyList(),
+    val snackbarMessage: String? = null,
+)
+
+data class PluginDetailUiState(
+    val isLoading: Boolean = true,
+    val error: String? = null,
+    val detail: PluginDetail? = null,
+    val isSaving: Boolean = false,
     val snackbarMessage: String? = null,
 )
 
@@ -23,37 +33,82 @@ class MyPluginsViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(MyPluginsUiState())
     val uiState: StateFlow<MyPluginsUiState> = _uiState.asStateFlow()
 
-    init { load() }
+    private val _detailState = MutableStateFlow(PluginDetailUiState())
+    val detailState: StateFlow<PluginDetailUiState> = _detailState.asStateFlow()
 
-    fun load() {
+    fun loadPlugins(plugins: List<PluginRoute>) {
+        _uiState.value = MyPluginsUiState(isLoading = false, plugins = plugins)
+    }
+
+    fun loadPluginDetail(uuid: String) {
         viewModelScope.launch {
-            _uiState.value = MyPluginsUiState(isLoading = true)
-            repo.getInstalledPlugins().fold(
-                onSuccess = { _uiState.value = MyPluginsUiState(isLoading = false, plugins = it) },
-                onFailure = { _uiState.value = MyPluginsUiState(isLoading = false, error = it.message) },
+            _detailState.value = PluginDetailUiState(isLoading = true)
+            repo.getPluginDetail(uuid).fold(
+                onSuccess = { _detailState.value = PluginDetailUiState(isLoading = false, detail = it) },
+                onFailure = { _detailState.value = PluginDetailUiState(isLoading = false, error = it.message) },
             )
         }
     }
 
-    fun togglePlugin(plugin: PluginInfo) {
+    fun updatePluginContent(uuid: String, content: String) {
         viewModelScope.launch {
-            try {
-                val body = mapOf("name" to plugin.id)
-                if (plugin.running) {
-                    RetrofitClient.api.stopPlugin(body)
-                } else {
-                    RetrofitClient.api.runPlugin(body)
-                }
-                load()
-                _uiState.value = _uiState.value.copy(snackbarMessage = if (plugin.running) "已停止" else "已启动")
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "操作失败：${e.message}")
-            }
+            _detailState.value = _detailState.value.copy(isSaving = true)
+            repo.updatePluginContent(uuid, content).fold(
+                onSuccess = {
+                    _detailState.value = _detailState.value.copy(isSaving = false, snackbarMessage = "保存成功")
+                },
+                onFailure = {
+                    _detailState.value = _detailState.value.copy(isSaving = false, snackbarMessage = "保存失败：${it.message}")
+                },
+            )
+        }
+    }
+
+    fun reloadPlugin(uuid: String) {
+        viewModelScope.launch {
+            repo.reloadPlugin(uuid).fold(
+                onSuccess = { _detailState.value = _detailState.value.copy(snackbarMessage = "重载成功") },
+                onFailure = { _detailState.value = _detailState.value.copy(snackbarMessage = "重载失败：${it.message}") },
+            )
+        }
+    }
+
+    fun toggleDebug(uuid: String, debug: Boolean) {
+        viewModelScope.launch {
+            repo.togglePluginDebug(uuid, debug).fold(
+                onSuccess = {
+                    _detailState.value = _detailState.value.copy(
+                        detail = _detailState.value.detail?.copy(debug = debug),
+                        snackbarMessage = if (debug) "已开启调试模式" else "已关闭调试模式"
+                    )
+                },
+                onFailure = {
+                    _detailState.value = _detailState.value.copy(snackbarMessage = "操作失败：${it.message}")
+                },
+            )
+        }
+    }
+
+    fun savePluginForm(uuid: String, formData: Map<String, Any?>) {
+        viewModelScope.launch {
+            _detailState.value = _detailState.value.copy(isSaving = true)
+            repo.savePluginForm(uuid, formData).fold(
+                onSuccess = {
+                    _detailState.value = _detailState.value.copy(isSaving = false, snackbarMessage = "表单配置已保存")
+                },
+                onFailure = {
+                    _detailState.value = _detailState.value.copy(isSaving = false, snackbarMessage = "保存失败：${it.message}")
+                },
+            )
         }
     }
 
     fun clearSnackbar() {
         _uiState.value = _uiState.value.copy(snackbarMessage = null)
+    }
+
+    fun clearDetailSnackbar() {
+        _detailState.value = _detailState.value.copy(snackbarMessage = null)
     }
 }
 

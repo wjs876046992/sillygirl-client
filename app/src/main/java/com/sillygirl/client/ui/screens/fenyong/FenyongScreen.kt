@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -52,9 +52,18 @@ private fun getPlatformName(code: String): String = when (code.lowercase()) {
 private fun formatOrderTime(ts: Long?): String {
     if (ts == null || ts == 0L) return "—"
     return try {
-        val sdf = SimpleDateFormat("MM-dd HH:mm", Locale.CHINA)
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CHINA)
         sdf.format(java.util.Date(ts * 1000))
     } catch (_: Exception) { "—" }
+}
+
+@Composable
+private fun getStatusColor(status: String): Color = when {
+    status.contains("结算") -> SuccessColor
+    status.contains("退款") || status.contains("失效") -> DangerColor
+    status.contains("待") || status.contains("审核") -> WarningColor
+    status.isBlank() -> GrayText
+    else -> MaterialTheme.colorScheme.primary
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -94,6 +103,40 @@ fun FenyongScreen(
         Column(
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
+            // 快捷筛选栏
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilterChip(
+                    selected = uiState.filterActualGtZero,
+                    onClick = { viewModel.toggleFilterActualGtZero() },
+                    label = { Text("实际佣金 > 0", style = MaterialTheme.typography.labelMedium) },
+                    leadingIcon = if (uiState.filterActualGtZero) {
+                        { Icon(Icons.Filled.Check, null, Modifier.size(16.dp)) }
+                    } else null,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = SuccessColor.copy(alpha = 0.15f),
+                        selectedLabelColor = SuccessColor,
+                        selectedLeadingIconColor = SuccessColor,
+                    ),
+                )
+                if (uiState.filterActualGtZero) {
+                    val filteredCount = uiState.orders.count {
+                        (it.content.firstOrNull { c -> c.label == "实际佣金" }?.value?.toString()?.toDoubleOrNull() ?: 0.0) > 0
+                    }
+                    Text(
+                        "${filteredCount}/${uiState.orders.size}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = GrayText,
+                    )
+                }
+            }
+
             when {
                 uiState.isLoading && uiState.orders.isEmpty() -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -112,35 +155,48 @@ fun FenyongScreen(
                     }
                 }
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(vertical = 12.dp),
-                    ) {
-                        if (uiState.orders.isEmpty() && !uiState.isLoading) {
-                            item {
-                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(Icons.Filled.ReceiptLong, null, Modifier.size(48.dp), tint = GrayText)
-                                        Spacer(Modifier.height(8.dp))
-                                        Text("暂无订单", color = GrayText)
+                    val displayedOrders = if (uiState.filterActualGtZero) {
+                        uiState.orders.filter { order ->
+                            val actual = order.content.firstOrNull { it.label == "实际佣金" }?.value?.toString()?.toDoubleOrNull() ?: 0.0
+                            actual > 0
+                        }
+                    } else {
+                        uiState.orders
+                    }
+
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(horizontal = 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(vertical = 12.dp),
+                        ) {
+                            if (displayedOrders.isEmpty() && !uiState.isLoading) {
+                                item {
+                                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Icon(Icons.AutoMirrored.Filled.ReceiptLong, null, Modifier.size(48.dp), tint = GrayText)
+                                            Spacer(Modifier.height(8.dp))
+                                            Text("暂无订单", color = GrayText)
+                                        }
                                     }
                                 }
-                            }
-                        } else {
-                            items(uiState.orders, key = { it.orderId }) { order ->
-                                OrderItemCard(order)
+                            } else {
+                                items(displayedOrders, key = { it.orderId }) { order ->
+                                    OrderItemCard(order)
+                                }
                             }
                         }
 
                         if (uiState.total > 20) {
-                            item {
-                                PaginationWidget(
-                                    currentPage = uiState.page,
-                                    total = uiState.total,
-                                    onPageChange = viewModel::loadOrders,
-                                )
-                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                            PaginationWidget(
+                                currentPage = uiState.page,
+                                total = uiState.total,
+                                onPageChange = viewModel::loadOrders,
+                            )
                         }
                     }
                 }
@@ -173,9 +229,7 @@ private fun MiniAppBar(
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 title()
             }
-            if (actions != null) {
-                actions()
-            }
+            actions()
         }
     }
 }
@@ -217,10 +271,24 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    platformText?.let { SiteChip(it, getPlatformColor(it)) }
-                    timeText?.let {
-                        Text(it, style = MaterialTheme.typography.labelSmall, color = GrayText)
+                    if (order.status.isNotBlank()) {
+                        val sc = getStatusColor(order.status)
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = sc.copy(alpha = 0.12f),
+                        ) {
+                            Text(
+                                order.status,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = sc,
+                            )
+                        }
                     }
+                }
+                timeText?.let {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = GrayText)
                 }
             }
         }

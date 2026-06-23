@@ -25,6 +25,7 @@ import com.sillygirl.client.ui.screens.login.LoginScreen
 import com.sillygirl.client.ui.screens.settings.SettingsScreen
 import com.sillygirl.client.ui.screens.plugins.MyPluginsScreen
 import com.sillygirl.client.ui.screens.plugins.PluginMarketScreen
+import com.sillygirl.client.ui.screens.plugins.PluginDetailScreen
 import com.sillygirl.client.ui.screens.masters.MastersScreen
 import com.sillygirl.client.ui.screens.tasks.TasksScreen
 import com.sillygirl.client.ui.screens.service.ServiceScreen
@@ -44,6 +45,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val MY_PLUGINS = "my_plugins"
     const val PLUGIN_MARKET = "plugin_market"
+    const val PLUGIN_DETAIL = "plugin_detail/{pluginPath}"
     const val MASTERS = "masters"
     const val TASKS = "tasks"
     const val SERVICE = "service"
@@ -152,6 +154,7 @@ fun AppNavGraph() {
                         DashboardScreen(
                             currentUser = currentUser,
                             onNavigateToFenyong = { navController.navigate(Routes.FENYONG) },
+                            onNavigateToMyPlugins = { navController.navigate(Routes.MY_PLUGINS) },
                             onNavigateToPluginMarket = { navController.navigate(Routes.PLUGIN_MARKET) },
                             onNavigateToMasters = { navController.navigate(Routes.MASTERS) },
                             onNavigateToTasks = { navController.navigate(Routes.TASKS) },
@@ -181,10 +184,27 @@ fun AppNavGraph() {
             }
 
             composable(Routes.MY_PLUGINS) {
-                MyPluginsScreen(onBack = { navController.popBackStack() })
+                MyPluginsScreen(
+                    plugins = currentUser?.plugins ?: emptyList(),
+                    onBack = { navController.popBackStack() },
+                    onPluginClick = { plugin ->
+                        // 导航到插件详情页
+                        navController.navigate("plugin_detail/${plugin.path}")
+                    },
+                )
             }
             composable(Routes.PLUGIN_MARKET) {
                 PluginMarketScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.PLUGIN_DETAIL) { backStackEntry ->
+                val pluginPath = backStackEntry.arguments?.getString("pluginPath") ?: ""
+                val plugin = currentUser?.plugins?.find { it.path == pluginPath }
+                if (plugin != null) {
+                    PluginDetailScreen(
+                        plugin = plugin,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
             }
 
             composable(Routes.MASTERS) {

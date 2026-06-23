@@ -19,15 +19,22 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sillygirl.client.ui.components.GlassCard
 import com.sillygirl.client.ui.theme.DangerColor
+import com.sillygirl.client.data.model.PluginRoute
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyPluginsScreen(
+    plugins: List<PluginRoute>,
     onBack: () -> Unit,
+    onPluginClick: (PluginRoute) -> Unit,
     viewModel: MyPluginsViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(plugins) {
+        viewModel.loadPlugins(plugins)
+    }
 
     LaunchedEffect(uiState.snackbarMessage) {
         val msg = uiState.snackbarMessage ?: return@LaunchedEffect
@@ -40,7 +47,7 @@ fun MyPluginsScreen(
             MiniAppBar(
                 title = { Text("我的插件") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
-                actions = { IconButton(onClick = { viewModel.load() }) { Icon(Icons.Filled.Refresh, "刷新") } }
+                actions = { IconButton(onClick = { viewModel.loadPlugins(plugins) }) { Icon(Icons.Filled.Refresh, "刷新") } }
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -62,7 +69,7 @@ fun MyPluginsScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(uiState.plugins) { plugin ->
-                        MyPluginCard(plugin, onToggle = { viewModel.togglePlugin(plugin) })
+                        MyPluginCard(plugin, onClick = { onPluginClick(plugin) })
                     }
                 }
             }
@@ -144,16 +151,14 @@ private fun MiniAppBar(
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 title()
             }
-            if (actions != null) {
-                actions()
-            }
+            actions()
         }
     }
 }
 
 @Composable
-private fun MyPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo, onToggle: () -> Unit) {
-    GlassCard {
+private fun MyPluginCard(plugin: PluginRoute, onClick: () -> Unit) {
+    GlassCard(onClick = onClick) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
@@ -166,20 +171,23 @@ private fun MyPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo, onT
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(plugin.title.ifBlank { plugin.id }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text(plugin.title.ifBlank { plugin.name }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.width(6.dp))
                     if (plugin.debug) {
                         Text("调试", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+                    }
+                    if (plugin.hasForm) {
+                        Text("表单", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                     }
                 }
                 if (plugin.description.isNotBlank()) {
                     Text(plugin.description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
-                Text("v${plugin.version}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${plugin.version} · ${plugin.author.ifBlank { "未知作者" }}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Switch(checked = plugin.running, onCheckedChange = { onToggle() })
+            Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -212,6 +220,319 @@ private fun MarketPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo,
                 modifier = Modifier.height(34.dp),
             ) {
                 Text("安装", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+// ===== 插件详情页面 =====
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PluginDetailScreen(
+    plugin: PluginRoute,
+    onBack: () -> Unit,
+    viewModel: MyPluginsViewModel = viewModel(),
+) {
+    val detailState by viewModel.detailState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showEditor by remember { mutableStateOf(false) }
+    var editorContent by remember { mutableStateOf("") }
+
+    LaunchedEffect(plugin.path) {
+        viewModel.loadPluginDetail(plugin.path)
+    }
+
+    LaunchedEffect(detailState.snackbarMessage) {
+        val msg = detailState.snackbarMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        viewModel.clearDetailSnackbar()
+    }
+
+    LaunchedEffect(detailState.detail?.content) {
+        if (detailState.detail?.content != null && editorContent.isEmpty()) {
+            editorContent = detailState.detail!!.content
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            MiniAppBar(
+                title = { Text(plugin.title.ifBlank { plugin.name }) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
+                actions = {
+                    IconButton(onClick = { viewModel.reloadPlugin(plugin.path) }) {
+                        Icon(Icons.Filled.Refresh, "重载")
+                    }
+                    IconButton(onClick = { showEditor = !showEditor }) {
+                        Icon(if (showEditor) Icons.Filled.Visibility else Icons.Filled.Code, if (showEditor) "预览" else "编辑")
+                    }
+                }
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+    ) { padding ->
+        when {
+            detailState.isLoading -> {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            detailState.error != null -> {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(detailState.error!!, color = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedButton(onClick = { viewModel.loadPluginDetail(plugin.path) }) {
+                            Text("重试")
+                        }
+                    }
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentPadding = PaddingValues(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    // 插件信息卡片
+                    item {
+                        PluginInfoCard(plugin, detailState.detail?.debug ?: false, onToggleDebug = {
+                            viewModel.toggleDebug(plugin.path, !(detailState.detail?.debug ?: false))
+                        })
+                    }
+
+                    // 表单配置（如果有）
+                    if (plugin.hasForm && detailState.detail?.form != null) {
+                        item {
+                            PluginFormCard(
+                                plugin = plugin,
+                                form = detailState.detail!!.form,
+                                isSaving = detailState.isSaving,
+                                onSave = { formData ->
+                                    viewModel.savePluginForm(plugin.path, formData)
+                                }
+                            )
+                        }
+                    }
+
+                    // 代码编辑器
+                    if (showEditor) {
+                        item {
+                            PluginEditorCard(
+                                content = editorContent,
+                                onContentChange = { editorContent = it },
+                                isSaving = detailState.isSaving,
+                                onSave = {
+                                    viewModel.updatePluginContent(plugin.path, editorContent)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PluginInfoCard(plugin: PluginRoute, debug: Boolean, onToggleDebug: () -> Unit) {
+    GlassCard {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // 头部：图标 + 标题
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(48.dp).shadow(4.dp, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Filled.Extension, null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        plugin.title.ifBlank { plugin.name },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        "by ${plugin.author.ifBlank { "未知作者" }}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // 描述
+            if (plugin.description.isNotBlank()) {
+                Text(
+                    plugin.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            // 标签行
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Text(
+                        plugin.version,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+                if (plugin.classes.isNotEmpty()) {
+                    plugin.classes.take(3).forEach { cls ->
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                        ) {
+                            Text(
+                                cls,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+
+            // 操作行
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("调试模式", style = MaterialTheme.typography.bodyMedium)
+                Switch(checked = debug, onCheckedChange = { onToggleDebug() })
+            }
+        }
+    }
+}
+
+@Composable
+private fun PluginFormCard(
+    plugin: PluginRoute,
+    form: List<com.sillygirl.client.data.model.PluginFormField>,
+    isSaving: Boolean,
+    onSave: (Map<String, Any?>) -> Unit,
+) {
+    val formData = remember { mutableStateMapOf<String, Any?>() }
+
+    // 初始化表单数据
+    LaunchedEffect(form) {
+        form.forEach { field ->
+            if (formData[field.key] == null) {
+                formData[field.key] = field.value
+            }
+        }
+    }
+
+    GlassCard {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("插件配置", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+
+            form.forEach { field ->
+                when (field.type) {
+                    "switch" -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(field.label.ifBlank { field.key }, style = MaterialTheme.typography.bodyMedium)
+                            Switch(
+                                checked = formData[field.key] as? Boolean ?: false,
+                                onCheckedChange = { formData[field.key] = it }
+                            )
+                        }
+                    }
+                    "number" -> {
+                        OutlinedTextField(
+                            value = formData[field.key]?.toString() ?: "",
+                            onValueChange = { formData[field.key] = it },
+                            label = { Text(field.label.ifBlank { field.key }) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                        )
+                    }
+                    else -> { // text
+                        OutlinedTextField(
+                            value = formData[field.key]?.toString() ?: "",
+                            onValueChange = { formData[field.key] = it },
+                            label = { Text(field.label.ifBlank { field.key }) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                        )
+                    }
+                }
+            }
+
+            Button(
+                onClick = { onSave(formData.toMap()) },
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text("保存配置")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PluginEditorCard(
+    content: String,
+    onContentChange: (String) -> Unit,
+    isSaving: Boolean,
+    onSave: () -> Unit,
+) {
+    GlassCard {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("插件代码", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                Text("${content.length} 字符", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            OutlinedTextField(
+                value = content,
+                onValueChange = onContentChange,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp, max = 400.dp),
+                shape = RoundedCornerShape(12.dp),
+                textStyle = MaterialTheme.typography.bodySmall,
+            )
+
+            Button(
+                onClick = onSave,
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text("保存代码")
+                }
             }
         }
     }

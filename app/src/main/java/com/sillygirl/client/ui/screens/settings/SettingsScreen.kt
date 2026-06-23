@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -125,7 +126,7 @@ fun SettingsScreen(
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = DangerColor),
             ) {
-                Icon(Icons.Filled.Logout, null, Modifier.size(20.dp))
+                Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("退出登录", style = MaterialTheme.typography.titleSmall)
             }
@@ -157,9 +158,7 @@ private fun MiniAppBar(
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 title()
             }
-            if (actions != null) {
-                actions()
-            }
+            actions()
         }
     }
 }

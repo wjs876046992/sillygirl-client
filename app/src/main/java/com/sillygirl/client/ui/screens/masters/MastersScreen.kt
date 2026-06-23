@@ -27,7 +27,6 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 data class MastersUiState(
     val isLoading: Boolean = true,
@@ -223,9 +222,7 @@ private fun MiniAppBar(
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 title()
             }
-            if (actions != null) {
-                actions()
-            }
+            actions()
         }
     }
 }

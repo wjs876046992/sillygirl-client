@@ -16,9 +16,7 @@ object RetrofitClient {
     private var _api: SillyGirlApi? = null
     private var _currentServer: String = ""
 
-    val gson = GsonBuilder()
-        .setLenient()
-        .create()
+    val gson = GsonBuilder().create()
 
     /** 设置服务器地址并重建 Retrofit 实例 */
     fun setServer(baseUrl: String) {

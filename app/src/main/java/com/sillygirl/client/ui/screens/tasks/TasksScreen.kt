@@ -162,9 +162,7 @@ private fun MiniAppBar(
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 title()
             }
-            if (actions != null) {
-                actions()
-            }
+            actions()
         }
     }
 }
