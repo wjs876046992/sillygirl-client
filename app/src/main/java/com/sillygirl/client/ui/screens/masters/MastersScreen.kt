@@ -42,12 +42,12 @@ class MastersViewModel : ViewModel() {
     val ui: StateFlow<MastersUiState> = _ui.asStateFlow()
 
     init { load() }
-    fun load() {
+    fun load(showRefreshHint: Boolean = false) {
         viewModelScope.launch {
             _ui.value = _ui.value.copy(isLoading = true)
             val result = repo.getMasters()
             result.fold(
-                onSuccess = { r -> _ui.value = _ui.value.copy(isLoading = false, masters = r, platforms = emptyList(), snackbarMessage = "已刷新") },
+                onSuccess = { r -> _ui.value = _ui.value.copy(isLoading = false, masters = r, platforms = emptyList(), snackbarMessage = if (showRefreshHint) "已刷新" else null) },
                 onFailure = { e -> _ui.value = _ui.value.copy(isLoading = false, error = e.message) }
             )
         }
@@ -117,7 +117,7 @@ fun MastersScreen(
                 title = { Text("管理员") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
                 actions = {
-                    IconButton(onClick = { viewModel.load() }) { Icon(Icons.Filled.Refresh, "刷新") }
+                    IconButton(onClick = { viewModel.load(showRefreshHint = true) }) { Icon(Icons.Filled.Refresh, "刷新") }
                     IconButton(onClick = { showAdd = true }) { Icon(Icons.Filled.Add, "添加") }
                 }
             )

@@ -40,8 +40,8 @@ class MyPluginsViewModel : ViewModel() {
     private val _detailState = MutableStateFlow(PluginDetailUiState())
     val detailState: StateFlow<PluginDetailUiState> = _detailState.asStateFlow()
 
-    fun loadPlugins(plugins: List<PluginRoute>) {
-        _uiState.value = MyPluginsUiState(isLoading = false, plugins = plugins, snackbarMessage = "已刷新")
+    fun loadPlugins(plugins: List<PluginRoute>, showRefreshHint: Boolean = false) {
+        _uiState.value = MyPluginsUiState(isLoading = false, plugins = plugins, snackbarMessage = if (showRefreshHint) "已刷新" else null)
     }
 
     fun loadPluginContent(uuid: String) {
@@ -192,11 +192,11 @@ class PluginMarketViewModel : ViewModel() {
 
     init { load() }
 
-    fun load() {
+    fun load(showRefreshHint: Boolean = false) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             repo.getAvailablePlugins().fold(
-                onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false, plugins = it, snackbarMessage = "已刷新") },
+                onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false, plugins = it, snackbarMessage = if (showRefreshHint) "已刷新" else null) },
                 onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) },
             )
         }

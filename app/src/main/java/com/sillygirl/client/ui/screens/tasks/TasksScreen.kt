@@ -46,10 +46,10 @@ class TasksViewModel : ViewModel() {
     val ui: StateFlow<TasksUiState> = _ui.asStateFlow()
 
     init { load() }
-    fun load() { viewModelScope.launch {
+    fun load(showRefreshHint: Boolean = false) { viewModelScope.launch {
         _ui.value = _ui.value.copy(isLoading = true)
         repo.getTasks().fold(
-            onSuccess = { _ui.value = _ui.value.copy(isLoading = false, tasks = it, snackbarMessage = "已刷新") },
+            onSuccess = { _ui.value = _ui.value.copy(isLoading = false, tasks = it, snackbarMessage = if (showRefreshHint) "已刷新" else null) },
             onFailure = { _ui.value = _ui.value.copy(isLoading = false, error = it.message) }
         )
     }}
@@ -140,7 +140,7 @@ fun TasksScreen(
             MiniAppBar(
                 title = { Text("定时任务") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
-                actions = { IconButton(onClick = { viewModel.load() }) { Icon(Icons.Filled.Refresh, "刷新") } }
+                actions = { IconButton(onClick = { viewModel.load(showRefreshHint = true) }) { Icon(Icons.Filled.Refresh, "刷新") } }
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -221,7 +221,7 @@ private fun TaskItemCard(task: TaskInfo, onToggle: () -> Unit, onRun: () -> Unit
                     }
                 }
                 Spacer(Modifier.width(12.dp))
-                Column(Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f)) {
                     Text(task.title.ifBlank { task.taskId }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     Text(task.schedule, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

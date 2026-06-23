@@ -77,7 +77,7 @@ fun MyPluginsScreen(
             MiniAppBar(
                 title = { Text("我的插件 (${uiState.plugins.size})") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
-                actions = { IconButton(onClick = { viewModel.loadPlugins(plugins) }) { Icon(Icons.Filled.Refresh, "刷新") } }
+                actions = { IconButton(onClick = { viewModel.loadPlugins(plugins, showRefreshHint = true) }) { Icon(Icons.Filled.Refresh, "刷新") } }
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -196,7 +196,7 @@ fun PluginMarketScreen(
             MiniAppBar(
                 title = { Text("插件市场") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
-                actions = { IconButton(onClick = { viewModel.load() }) { Icon(Icons.Filled.Refresh, "刷新") } }
+                actions = { IconButton(onClick = { viewModel.load(showRefreshHint = true) }) { Icon(Icons.Filled.Refresh, "刷新") } }
             )
         },
         containerColor = MaterialTheme.colorScheme.background,

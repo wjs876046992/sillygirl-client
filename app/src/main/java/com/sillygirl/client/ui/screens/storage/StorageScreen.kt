@@ -37,13 +37,13 @@ class StorageViewModel : ViewModel() {
     private val _ui = MutableStateFlow(StorageUiState())
     val ui: StateFlow<StorageUiState> = _ui.asStateFlow()
 
-    fun loadKeys() {
+    fun loadKeys(showRefreshHint: Boolean = false) {
         viewModelScope.launch {
             _ui.value = _ui.value.copy(isLoading = true, error = null)
             try {
                 val resp = RetrofitClient.api.getStorage("__keys__")
                 if (resp.success) {
-                    _ui.value = _ui.value.copy(isLoading = false, keys = (try { @Suppress("UNCHECKED_CAST") (resp.data as List<String>) } catch (_: Exception) { emptyList() }), error = null, snackbarMessage = "已刷新")
+                    _ui.value = _ui.value.copy(isLoading = false, keys = (try { @Suppress("UNCHECKED_CAST") (resp.data as List<String>) } catch (_: Exception) { emptyList() }), error = null, snackbarMessage = if (showRefreshHint) "已刷新" else null)
                 } else {
                     _ui.value = _ui.value.copy(isLoading = false, error = resp.errorMessage ?: "加载失败")
                 }
@@ -137,7 +137,7 @@ fun StorageScreen(
             MiniAppBar(
                 title = { Text("存储管理") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
-                actions = { IconButton(onClick = { viewModel.loadKeys() }) { Icon(Icons.Filled.Refresh, "刷新") } }
+                actions = { IconButton(onClick = { viewModel.loadKeys(showRefreshHint = true) }) { Icon(Icons.Filled.Refresh, "刷新") } }
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
