@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sillygirl.client.ui.components.GlassCard
@@ -164,11 +165,15 @@ private fun MyPluginCard(plugin: PluginRoute, onClick: () -> Unit) {
                 modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    Icons.Filled.Extension, null,
-                    tint = if (plugin.running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
+                if (plugin.icon.isNotBlank()) {
+                    Text(plugin.icon, fontSize = 20.sp)
+                } else {
+                    Icon(
+                        Icons.Filled.Extension, null,
+                        tint = if (plugin.running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -185,7 +190,11 @@ private fun MyPluginCard(plugin: PluginRoute, onClick: () -> Unit) {
                 if (plugin.description.isNotBlank()) {
                     Text(plugin.description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
-                Text("${plugin.version} · ${plugin.author.ifBlank { "未知作者" }}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(plugin.version, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("·", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(plugin.author.ifBlank { plugin.origin.ifBlank { "未知" } }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }

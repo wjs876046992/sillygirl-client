@@ -35,6 +35,7 @@ data class PluginRoute(
     val title: String = "",
     val description: String = "",
     val icon: String = "",
+    val origin: String = "",
     val version: String = "v1.0.0",
     val author: String = "",
     val running: Boolean = false,

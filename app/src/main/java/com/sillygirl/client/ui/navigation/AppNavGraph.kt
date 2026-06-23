@@ -45,7 +45,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val MY_PLUGINS = "my_plugins"
     const val PLUGIN_MARKET = "plugin_market"
-    const val PLUGIN_DETAIL = "plugin_detail/{pluginPath}"
+    const val PLUGIN_DETAIL = "plugin_detail/{pluginUuid}"
     const val MASTERS = "masters"
     const val TASKS = "tasks"
     const val SERVICE = "service"
@@ -188,8 +188,9 @@ fun AppNavGraph() {
                     plugins = currentUser?.plugins ?: emptyList(),
                     onBack = { navController.popBackStack() },
                     onPluginClick = { plugin ->
-                        // 导航到插件详情页
-                        navController.navigate("plugin_detail/${plugin.path}")
+                        // 导航到插件详情页，使用 UUID
+                        val uuid = plugin.path.removePrefix("/script/")
+                        navController.navigate("plugin_detail/$uuid")
                     },
                 )
             }
@@ -197,8 +198,8 @@ fun AppNavGraph() {
                 PluginMarketScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.PLUGIN_DETAIL) { backStackEntry ->
-                val pluginPath = backStackEntry.arguments?.getString("pluginPath") ?: ""
-                val plugin = currentUser?.plugins?.find { it.path == pluginPath }
+                val pluginUuid = backStackEntry.arguments?.getString("pluginUuid") ?: ""
+                val plugin = currentUser?.plugins?.find { it.path.removePrefix("/script/") == pluginUuid }
                 if (plugin != null) {
                     PluginDetailScreen(
                         plugin = plugin,
