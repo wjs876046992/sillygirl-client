@@ -1,10 +1,11 @@
 # 插件管理功能设计文档
 
 > Created: 2026-06-23
+> Updated: 2026-06-23 (simplified to use existing storage API)
 
 ## 1. 功能概述
 
-插件管理功能允许用户管理 SillyGirl 后端的插件，包括查看插件列表、编辑插件内容、重载插件、切换调试模式、配置插件表单等。
+插件管理功能允许用户管理 SillyGirl 后端的插件，包括查看插件列表、编辑插件内容、重载插件、切换调试模式等。
 
 ## 2. 页面结构
 
@@ -31,13 +32,11 @@
 - 显示插件信息（标题、描述、版本、作者、分类）
 - 切换调试模式（debug）
 - 编辑插件内容（代码编辑器）
-- 配置插件表单（如果插件有 @form 注解）
 - 重载插件
 
 **UI 元素**：
 - MiniAppBar（标题：插件名称，操作：重载、编辑/预览切换）
 - PluginInfoCard（插件信息 + debug 开关）
-- PluginFormCard（表单配置，条件显示）
 - PluginEditorCard（代码编辑器，条件显示）
 
 ## 3. 数据模型
@@ -63,37 +62,13 @@ data class PluginRoute(
 )
 ```
 
-### 3.2 PluginDetail
+## 4. API 接口（使用现有 storage API）
 
-```kotlin
-data class PluginDetail(
-    val uuid: String = "",
-    val content: String = "",        // 插件源代码
-    val form: List<PluginFormField> = emptyList(),  // 表单配置
-    val debug: Boolean = false,
-    val disable: Boolean = false,
-)
-```
-
-### 3.3 PluginFormField
-
-```kotlin
-data class PluginFormField(
-    val key: String = "",            // 字段 key
-    val label: String = "",          // 显示标签
-    val type: String = "text",       // 类型：text, number, switch, select
-    val value: Any? = null,          // 当前值
-    val options: List<PluginFormOption> = emptyList(),  // 选项（select 类型）
-)
-```
-
-## 4. API 接口
-
-### 4.1 获取插件详情
+### 4.1 获取插件内容
 
 **请求**：
 ```
-GET /api/plugins/detail?uuid={uuid}
+GET /api/storage?keys=plugins.{uuid}
 ```
 
 **响应**：
@@ -101,24 +76,7 @@ GET /api/plugins/detail?uuid={uuid}
 {
   "success": true,
   "data": {
-    "uuid": "710fe387_77c3_5a2c_8f95_dbf2fdd5f237",
-    "content": "// plugin source code...",
-    "form": [
-      {
-        "key": "qqbot.appId",
-        "label": "App ID",
-        "type": "text",
-        "value": "1903850706"
-      },
-      {
-        "key": "qqbot.appSecret",
-        "label": "App Secret",
-        "type": "text",
-        "value": ""
-      }
-    ],
-    "debug": false,
-    "disable": false
+    "plugins.9e594935_8d3a_57a7_bb87_c296ee343bd3": "// plugin source code..."
   }
 }
 ```
@@ -127,11 +85,11 @@ GET /api/plugins/detail?uuid={uuid}
 
 **请求**：
 ```
-PUT /api/plugins/content?uuid={uuid}
+PUT /api/storage?uuid={pluginId}
 Content-Type: application/json
 
 {
-  "content": "// updated plugin source code..."
+  "plugins.{uuid}": "// updated plugin source code..."
 }
 ```
 
@@ -142,15 +100,17 @@ Content-Type: application/json
 }
 ```
 
+**说明**：保存后会自动触发插件重载。
+
 ### 4.3 重载插件
 
 **请求**：
 ```
-POST /api/plugins/reload
+PUT /api/storage?uuid={pluginId}
 Content-Type: application/json
 
 {
-  "uuid": "710fe387_77c3_5a2c_8f95_dbf2fdd5f237"
+  "plugins.{uuid}": "reload"
 }
 ```
 
@@ -165,34 +125,11 @@ Content-Type: application/json
 
 **请求**：
 ```
-POST /api/plugins/debug
-Content-Type: application/json
-
-{
-  "uuid": "710fe387_77c3_5a2c_8f95_dbf2fdd5f237",
-  "debug": true
-}
-```
-
-**响应**：
-```json
-{
-  "success": true
-}
-```
-
-### 4.5 保存插件表单配置
-
-**请求**：
-```
 PUT /api/storage?uuid={pluginId}
 Content-Type: application/json
 
 {
-  "qqbot.appId": "1903850706",
-  "qqbot.appSecret": "new_secret",
-  "plugin_debug.710fe387_77c3_5a2c_8f95_dbf2fdd5f237": true,
-  "plugin_disable.710fe387_77c3_5a2c_8f95_dbf2fdd5f237": false
+  "plugin_debug.{uuid}": "true"
 }
 ```
 
@@ -204,10 +141,8 @@ Content-Type: application/json
 ```
 
 **说明**：
-- 表单字段的 key 格式为 `{pluginName}.{fieldKey}`
-- debug 模式的 key 为 `plugin_debug.{pluginId}`
-- disable 模式的 key 为 `plugin_disable.{pluginId}`
-- 保存后会自动触发插件重载
+- debug 模式的 key 为 `plugin_debug.{uuid}`
+- disable 模式的 key 为 `plugin_disable.{uuid}`
 
 ## 5. 实现细节
 
@@ -224,7 +159,7 @@ data class MyPluginsUiState(
 data class PluginDetailUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
-    val detail: PluginDetail? = null,
+    val content: String = "",        // 插件内容
     val isSaving: Boolean = false,
     val snackbarMessage: String? = null,
 )
@@ -245,7 +180,6 @@ DashboardScreen
   │                       │
   │                       ├── 编辑代码
   │                       ├── 切换调试模式
-  │                       ├── 配置表单
   │                       └── 重载插件
   │
   └── 其他功能卡片...
@@ -253,67 +187,63 @@ DashboardScreen
 
 ### 5.3 关键代码片段
 
-**插件卡片**：
+**获取插件内容**：
 ```kotlin
-@Composable
-private fun MyPluginCard(plugin: PluginRoute, onClick: () -> Unit) {
-    GlassCard(onClick = onClick) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            // 图标
-            Box(modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp))) {
-                Icon(Icons.Filled.Extension, null, tint = ...)
-            }
-            Spacer(Modifier.width(12.dp))
-            // 信息
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(plugin.title.ifBlank { plugin.name })
-                    if (plugin.debug) Text("调试")
-                    if (plugin.hasForm) Text("表单")
-                }
-                Text(plugin.description)
-                Text("${plugin.version} · ${plugin.author}")
-            }
-            Icon(Icons.Filled.ChevronRight, null)
+suspend fun getPluginContent(uuid: String): Result<String> {
+    return try {
+        val keys = "plugins.$uuid"
+        val response = RetrofitClient.api.getStorage(keys)
+        if (response.success) {
+            val data = response.data as? Map<*, *>
+            val content = data?.get(keys) as? String ?: ""
+            Result.success(content)
+        } else {
+            Result.failure(Exception("获取插件内容失败"))
         }
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 }
 ```
 
-**Debug 开关**：
+**保存插件内容**：
 ```kotlin
-Row(
-    modifier = Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.SpaceBetween,
-    verticalAlignment = Alignment.CenterVertically,
-) {
-    Text("调试模式", style = MaterialTheme.typography.bodyMedium)
-    Switch(checked = debug, onCheckedChange = { onToggleDebug() })
+suspend fun updatePluginContent(uuid: String, content: String): Result<Unit> {
+    return try {
+        val body = mapOf("plugins.$uuid" to content)
+        val response = RetrofitClient.api.saveStorage(uuid, body)
+        if (response.success) Result.success(Unit)
+        else Result.failure(Exception("保存插件内容失败"))
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
 }
 ```
 
-**表单字段**：
+**重载插件**：
 ```kotlin
-when (field.type) {
-    "switch" -> {
-        Row(modifier = Modifier.fillMaxWidth(), ...) {
-            Text(field.label)
-            Switch(checked = formData[field.key] as? Boolean ?: false, ...)
-        }
+suspend fun reloadPlugin(uuid: String): Result<Unit> {
+    return try {
+        val body = mapOf("plugins.$uuid" to "reload")
+        val response = RetrofitClient.api.saveStorage(uuid, body)
+        if (response.success) Result.success(Unit)
+        else Result.failure(Exception("重载插件失败"))
+    } catch (e: Exception) {
+        Result.failure(e)
     }
-    "number" -> {
-        OutlinedTextField(
-            value = formData[field.key]?.toString() ?: "",
-            onValueChange = { formData[field.key] = it },
-            label = { Text(field.label) },
-        )
-    }
-    else -> { // text
-        OutlinedTextField(
-            value = formData[field.key]?.toString() ?: "",
-            onValueChange = { formData[field.key] = it },
-            label = { Text(field.label) },
-        )
+}
+```
+
+**切换调试模式**：
+```kotlin
+suspend fun togglePluginDebug(uuid: String, debug: Boolean): Result<Unit> {
+    return try {
+        val body = mapOf("plugin_debug.$uuid" to debug.toString())
+        val response = RetrofitClient.api.saveStorage(uuid, body)
+        if (response.success) Result.success(Unit)
+        else Result.failure(Exception("切换调试模式失败"))
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 }
 ```
@@ -333,17 +263,7 @@ when (field.type) {
  */
 ```
 
-### 6.2 插件表单配置
-
-插件表单配置存储在 bucket 中，key 格式为 `{pluginName}.{fieldKey}`：
-
-```
-qqbot.appId = "1903850706"
-qqbot.appSecret = "secret"
-qqbot.guild_enabled = "true"
-```
-
-### 6.3 Debug/Disable 状态
+### 6.2 Debug/Disable 状态
 
 Debug 和 Disable 状态存储在 bucket 中，key 格式为：
 

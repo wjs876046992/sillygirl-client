@@ -576,9 +576,15 @@ See [PLUGIN_MANAGEMENT.md](PLUGIN_MANAGEMENT.md) for detailed design documentati
 
 **Key Features**:
 - MyPluginsScreen: List of user's plugins from `currentUser.plugins`
-- PluginDetailScreen: Plugin info, debug toggle, form config, code editor
-- API Endpoints: detail, content update, reload, debug toggle, form save
+- PluginDetailScreen: Plugin info, debug toggle, code editor
+- Uses existing storage API (no new endpoints needed)
 - Navigation: Dashboard → MyPlugins → PluginDetail
+
+**API Usage**:
+- Get plugin content: `GET /api/storage?keys=plugins.{uuid}`
+- Update plugin content: `PUT /api/storage?uuid={pluginId}` with body `{plugins.{uuid}: content}`
+- Reload plugin: `PUT /api/storage?uuid={pluginId}` with body `{plugins.{uuid}: reload}`
+- Toggle debug: `PUT /api/storage?uuid={pluginId}` with body `{plugin_debug.{uuid}: true/false}`
 
 ## 13. Known Issues & Technical Debt
 
