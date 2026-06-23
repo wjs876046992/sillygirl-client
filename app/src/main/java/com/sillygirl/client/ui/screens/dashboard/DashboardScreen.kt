@@ -91,8 +91,6 @@ fun DashboardScreen(
                     onNavigateToPluginMarket,
                     onNavigateToStorage,
                     onNavigateToService,
-                    onNavigateToMasters,
-                    onNavigateToTasks,
                 )
             }
 
@@ -315,21 +313,17 @@ private fun FenyongOverviewCard(dash: com.sillygirl.client.data.model.FenyongDas
     }
 }
 
-// ===== 功能网格 3x3 =====
+// ===== 功能网格 =====
 @Composable
 private fun FeatureGrid(
     onNavigateToPluginMarket: () -> Unit,
     onNavigateToStorage: () -> Unit,
     onNavigateToService: () -> Unit,
-    onNavigateToMasters: () -> Unit,
-    onNavigateToTasks: () -> Unit,
 ) {
     val actions = listOf(
         FeatureItem(Icons.Filled.Store, "插件市场", onNavigateToPluginMarket, Color(0xFF667EEA)),
-        FeatureItem(Icons.Filled.People, "管理员", onNavigateToMasters, Color(0xFF8B5CF6)),
         FeatureItem(Icons.Filled.Storage, "存储", onNavigateToStorage, Color(0xFF22C55E)),
         FeatureItem(Icons.Filled.Dns, "服务", onNavigateToService, Color(0xFFF59E0B)),
-        FeatureItem(Icons.Filled.Schedule, "定时任务", onNavigateToTasks, Color(0xFFEF4444)),
     )
 
     val gridItems = actions.chunked(3)
