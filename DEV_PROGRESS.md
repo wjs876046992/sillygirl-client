@@ -1,5 +1,36 @@
 # sillygirl-client 开发进展
 
+## 2026-06-23 优化插件管理（搜索/筛选/状态/卸载/表单修复）
+
+### MyPluginsScreen 优化
+- 添加搜索栏（按名称、描述、作者模糊搜索）
+- 添加分类筛选 chips（从插件 classes 字段自动收集）
+- 插件卡片显示运行状态绿点（仅运行且未禁用时显示）
+- 状态标签：已禁用(红色)、调试(紫色)、配置(蓝色)
+- 显示分类标签和作者信息
+- 空搜索结果时显示"没有匹配的插件"提示
+- 顶部显示插件总数和运行中数量
+
+### PluginDetailScreen 优化
+- 运行状态指示器（运行中=绿色/已停止=灰色/已禁用=红色）
+- toggle debug/disable 添加 loading 转圈状态
+- 禁用开关使用红色 track（Material3 DangerColor）
+- 添加卸载功能（右上角删除图标 + 确认对话框）
+- 调试/禁用开关下方添加辅助说明文字
+- 显示 origin 来源标签
+
+### Bug 修复
+- PluginFormCard switch 类型标签重复显示（label 显示了两次）
+- menuAnchor() deprecation warning 修复（改为 MenuAnchorType.PrimaryNotEditable）
+
+### 技术改动
+- PluginRepository 添加 uninstallPlugin()（调用 POST /api/plugins/uninstall）
+- PluginDetailUiState 添加 isToggling 字段
+- AppNavGraph PluginDetailScreen 添加 onUninstalled 回调
+- 卸载后自动刷新用户信息并返回插件列表
+
+---
+
 ## 2026-06-23 修复插件管理功能
 
 ### 问题描述
