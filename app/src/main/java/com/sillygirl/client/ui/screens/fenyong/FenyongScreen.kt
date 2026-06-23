@@ -17,8 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -326,31 +328,35 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
     }
 }
 
-// ===== 商品图（只读缓存） =====
+// ===== 商品图（Coil AsyncImage） =====
 @Composable
 private fun OrderItemImage(url: String, site: String) {
-    val cachedPainter = ImageCache.get(url)
     val hasImage = url.isNotBlank() && !url.endsWith(".ico", ignoreCase = true)
+    val platformColor = getPlatformColor(site)
 
     Box(
         modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        if (hasImage && cachedPainter != null) {
-            androidx.compose.foundation.Image(
-                painter = cachedPainter,
+        // 底层始终绘制平台色占位（图片加载失败时可见）
+        Box(
+            modifier = Modifier.fillMaxSize().background(platformColor.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(getPlatformName(site).first().toString(), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = platformColor)
+        }
+
+        if (hasImage) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(url)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
-        } else {
-            val platformColor = getPlatformColor(site)
-            Box(
-                modifier = Modifier.fillMaxSize().background(platformColor.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(getPlatformName(site).first().toString(), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = platformColor)
-            }
         }
     }
 }
