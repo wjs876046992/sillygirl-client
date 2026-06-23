@@ -23,6 +23,7 @@ import com.sillygirl.client.data.model.TaskInfo
 import com.sillygirl.client.data.repository.TaskRepository
 import com.sillygirl.client.ui.components.GlassCard
 import com.sillygirl.client.ui.theme.*
+import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -201,23 +202,35 @@ private fun MiniAppBar(
 
 @Composable
 private fun TaskItemCard(task: TaskInfo, onToggle: () -> Unit, onRun: () -> Unit, onDelete: () -> Unit) {
+    val firstIcon = task.icons.firstOrNull()?.link
+    val hasIcon = !firstIcon.isNullOrBlank()
+
     GlassCard {
         Column(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // 图标：有icon用AsyncImage，无icon用PlayArrow
                 Box(
                     modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Box(
-                        modifier = Modifier.size(24.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (task.enable) SuccessColor.copy(alpha = 0.15f) else DangerColor.copy(alpha = 0.15f)),
-                    ) {
-                        Icon(
-                            Icons.Filled.PlayArrow, null,
-                            modifier = Modifier.size(14.dp),
-                            tint = if (task.enable) SuccessColor else DangerColor,
+                    if (hasIcon) {
+                        AsyncImage(
+                            model = firstIcon,
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier.size(24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (task.enable) SuccessColor.copy(alpha = 0.15f) else DangerColor.copy(alpha = 0.15f)),
+                        ) {
+                            Icon(
+                                Icons.Filled.PlayArrow, null,
+                                modifier = Modifier.size(14.dp),
+                                tint = if (task.enable) SuccessColor else DangerColor,
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.width(12.dp))

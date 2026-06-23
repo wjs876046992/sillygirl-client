@@ -273,4 +273,10 @@ data class TaskInfo(
     val enable: Boolean = false,
     @SerializedName("created_at") val createdAt: Long = 0,
     val remark: String = "",
+    val icons: List<TaskIcon> = emptyList(),
+)
+
+data class TaskIcon(
+    val link: String = "",
+    val title: String = "",
 )
