@@ -292,7 +292,20 @@ fun AppNavGraph() {
             }
 
             composable(Routes.SERVICE) {
-                ServiceScreen(onBack = { navController.popBackStack() })
+                ServiceScreen(
+                    onBack = { navController.popBackStack() },
+                    onServerSwitched = {
+                        // 切换服务器：重置所有状态，跳转登录
+                        RetrofitClient.reset()
+                        currentUser = null
+                        currentUserLoaded = false
+                        isLoggedIn = false
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    serverConfig = serverConfig,
+                )
             }
 
             composable(Routes.STORAGE) {

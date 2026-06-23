@@ -28,6 +28,9 @@ object RetrofitClient {
         ApiConfig.setServer(baseUrl)
     }
 
+    /** 获取当前服务器地址 */
+    fun currentServerUrl(): String? = _currentServer.ifBlank { null }
+
     /** 重置所有状态（登出） */
     fun reset() {
         _currentServer = ""
