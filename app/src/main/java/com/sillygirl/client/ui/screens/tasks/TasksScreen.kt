@@ -47,10 +47,10 @@ class TasksViewModel : ViewModel() {
 
     init { load() }
     fun load() { viewModelScope.launch {
-        _ui.value = TasksUiState(isLoading = true)
+        _ui.value = _ui.value.copy(isLoading = true)
         repo.getTasks().fold(
-            onSuccess = { _ui.value = TasksUiState(tasks = it) },
-            onFailure = { _ui.value = TasksUiState(isLoading = false, error = it.message) }
+            onSuccess = { _ui.value = _ui.value.copy(isLoading = false, tasks = it, snackbarMessage = "已刷新") },
+            onFailure = { _ui.value = _ui.value.copy(isLoading = false, error = it.message) }
         )
     }}
 
@@ -97,6 +97,38 @@ fun TasksScreen(
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    var taskToDelete by remember { mutableStateOf<TaskInfo?>(null) }
+    var taskToRun by remember { mutableStateOf<TaskInfo?>(null) }
+
+    // 删除确认
+    taskToDelete?.let { task ->
+        AlertDialog(
+            onDismissRequest = { taskToDelete = null },
+            title = { Text("删除任务") },
+            text = { Text("确定要删除「${task.title.ifBlank { task.taskId }}」吗？此操作不可撤销。") },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.deleteTask(task); taskToDelete = null },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text("删除") }
+            },
+            dismissButton = { TextButton(onClick = { taskToDelete = null }) { Text("取消") } },
+        )
+    }
+
+    // 执行确认
+    taskToRun?.let { task ->
+        AlertDialog(
+            onDismissRequest = { taskToRun = null },
+            title = { Text("执行任务") },
+            text = { Text("确定要立即执行「${task.title.ifBlank { task.taskId }}」吗？") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.runTask(task); taskToRun = null }) { Text("执行") }
+            },
+            dismissButton = { TextButton(onClick = { taskToRun = null }) { Text("取消") } },
+        )
+    }
+
     LaunchedEffect(ui.snackbarMessage) {
         val msg = ui.snackbarMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(msg)
@@ -130,7 +162,7 @@ fun TasksScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(ui.tasks) { task ->
-                        TaskItemCard(task, onToggle = { viewModel.toggleTask(task) }, onRun = { viewModel.runTask(task) }, onDelete = { viewModel.deleteTask(task) })
+                        TaskItemCard(task, onToggle = { viewModel.toggleTask(task) }, onRun = { taskToRun = task }, onDelete = { taskToDelete = task })
                     }
                 }
             }

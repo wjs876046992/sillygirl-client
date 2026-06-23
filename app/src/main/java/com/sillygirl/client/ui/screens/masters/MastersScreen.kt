@@ -44,10 +44,10 @@ class MastersViewModel : ViewModel() {
     init { load() }
     fun load() {
         viewModelScope.launch {
-            _ui.value = MastersUiState(isLoading = true)
+            _ui.value = _ui.value.copy(isLoading = true)
             val result = repo.getMasters()
             result.fold(
-                onSuccess = { r -> _ui.value = _ui.value.copy(masters = r, platforms = emptyList()) },
+                onSuccess = { r -> _ui.value = _ui.value.copy(isLoading = false, masters = r, platforms = emptyList(), snackbarMessage = "已刷新") },
                 onFailure = { e -> _ui.value = _ui.value.copy(isLoading = false, error = e.message) }
             )
         }
@@ -86,6 +86,23 @@ fun MastersScreen(
     }
 
     var showAdd by remember { mutableStateOf(false) }
+    var masterToDelete by remember { mutableStateOf<MasterInfo?>(null) }
+
+    // 删除确认对话框
+    masterToDelete?.let { master ->
+        AlertDialog(
+            onDismissRequest = { masterToDelete = null },
+            title = { Text("移除管理员") },
+            text = { Text("确定要移除「${master.nickname.ifBlank { master.number }}」吗？") },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.removeMaster(master); masterToDelete = null },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text("移除") }
+            },
+            dismissButton = { TextButton(onClick = { masterToDelete = null }) { Text("取消") } },
+        )
+    }
 
     if (showAdd) {
         AddMasterDialog(
@@ -124,7 +141,7 @@ fun MastersScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(ui.masters) { master ->
-                        MasterCard(master, onRemove = { viewModel.removeMaster(master) })
+                        MasterCard(master, onRemove = { masterToDelete = master })
                     }
                 }
             }

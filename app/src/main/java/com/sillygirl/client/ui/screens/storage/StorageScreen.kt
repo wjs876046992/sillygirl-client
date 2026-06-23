@@ -39,16 +39,16 @@ class StorageViewModel : ViewModel() {
 
     fun loadKeys() {
         viewModelScope.launch {
-            _ui.value = StorageUiState(isLoading = true)
+            _ui.value = _ui.value.copy(isLoading = true, error = null)
             try {
                 val resp = RetrofitClient.api.getStorage("__keys__")
                 if (resp.success) {
-                    _ui.value = StorageUiState(keys = (try { @Suppress("UNCHECKED_CAST") (resp.data as List<String>) } catch (_: Exception) { emptyList() }), error = null)
+                    _ui.value = _ui.value.copy(isLoading = false, keys = (try { @Suppress("UNCHECKED_CAST") (resp.data as List<String>) } catch (_: Exception) { emptyList() }), error = null, snackbarMessage = "已刷新")
                 } else {
-                    _ui.value = StorageUiState(isLoading = false, error = resp.errorMessage ?: "加载失败")
+                    _ui.value = _ui.value.copy(isLoading = false, error = resp.errorMessage ?: "加载失败")
                 }
             } catch (e: Exception) {
-                _ui.value = StorageUiState(isLoading = false, error = "加载失败: ${e.message}")
+                _ui.value = _ui.value.copy(isLoading = false, error = "加载失败: ${e.message}")
             }
         }
     }
@@ -91,6 +91,40 @@ fun StorageScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var keyInput by remember { mutableStateOf("") }
     var valueInput by remember { mutableStateOf("") }
+    var showSaveDialog by remember { mutableStateOf(false) }
+
+    // 保存确认对话框
+    if (showSaveDialog) {
+        val key = ui.selectedKey
+        val value = valueInput.ifBlank { ui.selectedValue }
+        if (key != null && value != null) {
+            AlertDialog(
+                onDismissRequest = { showSaveDialog = false },
+                title = { Text("保存确认") },
+                text = {
+                    Column {
+                        Text("确定要保存以下键值吗？")
+                        Spacer(Modifier.height(8.dp))
+                        Text("Key: $key", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Value: ${value.take(100)}${if (value.length > 100) "..." else ""}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 5,
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.saveValue(key, value)
+                        showSaveDialog = false
+                    }) { Text("保存") }
+                },
+                dismissButton = { TextButton(onClick = { showSaveDialog = false }) { Text("取消") } },
+            )
+        }
+    }
 
     LaunchedEffect(ui.snackbarMessage) {
         val msg = ui.snackbarMessage ?: return@LaunchedEffect
@@ -152,10 +186,7 @@ fun StorageScreen(
                         Spacer(Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilledTonalButton(
-                                onClick = {
-                                    val k = ui.selectedKey ?: return@FilledTonalButton
-                                    viewModel.saveValue(k, valueInput.ifBlank { ui.selectedValue!! })
-                                },
+                                onClick = { showSaveDialog = true },
                                 shape = RoundedCornerShape(10.dp),
                             ) { Text("保存") }
                             OutlinedButton(
