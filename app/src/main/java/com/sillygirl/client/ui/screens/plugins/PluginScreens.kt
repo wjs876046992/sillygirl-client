@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
 import com.sillygirl.client.ui.components.GlassCard
 import com.sillygirl.client.ui.theme.*
 import com.sillygirl.client.data.model.PluginRoute
@@ -264,14 +265,18 @@ private fun MyPluginCard(plugin: PluginRoute, onClick: () -> Unit) {
                     modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (plugin.icon.isNotBlank()) {
-                        Text(plugin.icon, fontSize = 20.sp)
-                    } else {
-                        Icon(
+                    when {
+                        plugin.icon.isBlank() -> Icon(
                             Icons.Filled.Extension, null,
                             tint = if (plugin.running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp),
                         )
+                        isIconUrl(plugin.icon) -> AsyncImage(
+                            model = plugin.icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
+                        )
+                        else -> Text(plugin.icon, fontSize = 20.sp)
                     }
                 }
                 // 运行状态点
@@ -352,6 +357,10 @@ private fun MyPluginCard(plugin: PluginRoute, onClick: () -> Unit) {
     }
 }
 
+/** 判断 icon 字段是否为 URL */
+private fun isIconUrl(icon: String): Boolean =
+    icon.startsWith("http://") || icon.startsWith("https://")
+
 @Composable
 private fun StatusChip(text: String, color: Color) {
     Surface(
@@ -377,11 +386,19 @@ private fun MarketPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo,
                 modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    Icons.Filled.Store, null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
-                )
+                when {
+                    plugin.icon.isBlank() -> Icon(
+                        Icons.Filled.Store, null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    isIconUrl(plugin.icon) -> AsyncImage(
+                        model = plugin.icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                    )
+                    else -> Text(plugin.icon, fontSize = 20.sp)
+                }
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.fillMaxWidth()) {
@@ -569,14 +586,18 @@ private fun PluginInfoCard(
                     modifier = Modifier.size(48.dp).shadow(4.dp, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (plugin.icon.isNotBlank()) {
-                        Text(plugin.icon, fontSize = 24.sp)
-                    } else {
-                        Icon(
+                    when {
+                        plugin.icon.isBlank() -> Icon(
                             Icons.Filled.Extension, null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp),
                         )
+                        isIconUrl(plugin.icon) -> AsyncImage(
+                            model = plugin.icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp),
+                        )
+                        else -> Text(plugin.icon, fontSize = 24.sp)
                     }
                 }
                 Spacer(Modifier.width(12.dp))

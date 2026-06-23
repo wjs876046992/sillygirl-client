@@ -4,6 +4,10 @@ import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.model.*
 
 class PluginRepository {
+
+    /** 统一将 path（如 /script/uuid）转为纯 UUID */
+    private fun String.asPluginId(): String = removePrefix("/script/")
+
     suspend fun getInstalledPlugins(): Result<List<PluginInfo>> {
         return try {
             val response = RetrofitClient.api.getPluginList(activeKey = "tab1")
@@ -26,7 +30,8 @@ class PluginRepository {
 
     suspend fun getPluginContent(uuid: String): Result<String> {
         return try {
-            val keys = "plugins.$uuid"
+            val pluginId = uuid.asPluginId()
+            val keys = "plugins.$pluginId"
             val response = RetrofitClient.api.getStorage(keys)
             if (response.success) {
                 val data = response.data as? Map<*, *>
@@ -42,8 +47,9 @@ class PluginRepository {
 
     suspend fun updatePluginContent(uuid: String, content: String): Result<Unit> {
         return try {
-            val body = mapOf("plugins.$uuid" to content)
-            val response = RetrofitClient.api.saveStorage(uuid, body)
+            val pluginId = uuid.asPluginId()
+            val body = mapOf("plugins.$pluginId" to content)
+            val response = RetrofitClient.api.saveStorage(pluginId, body)
             if (response.success) Result.success(Unit)
             else Result.failure(Exception("保存插件内容失败"))
         } catch (e: Exception) {
@@ -53,8 +59,9 @@ class PluginRepository {
 
     suspend fun reloadPlugin(uuid: String): Result<Unit> {
         return try {
-            val body = mapOf("plugins.$uuid" to "reload")
-            val response = RetrofitClient.api.saveStorage(uuid, body)
+            val pluginId = uuid.asPluginId()
+            val body = mapOf("plugins.$pluginId" to "reload")
+            val response = RetrofitClient.api.saveStorage(pluginId, body)
             if (response.success) Result.success(Unit)
             else Result.failure(Exception("重载插件失败"))
         } catch (e: Exception) {
@@ -64,8 +71,9 @@ class PluginRepository {
 
     suspend fun togglePluginDebug(uuid: String, debug: Boolean): Result<Unit> {
         return try {
-            val body = mapOf("plugin_debug.$uuid" to debug.toString())
-            val response = RetrofitClient.api.saveStorage(uuid, body)
+            val pluginId = uuid.asPluginId()
+            val body = mapOf("plugin_debug.$pluginId" to debug.toString())
+            val response = RetrofitClient.api.saveStorage(pluginId, body)
             if (response.success) Result.success(Unit)
             else Result.failure(Exception("切换调试模式失败"))
         } catch (e: Exception) {
@@ -75,8 +83,9 @@ class PluginRepository {
 
     suspend fun togglePluginDisable(uuid: String, disable: Boolean): Result<Unit> {
         return try {
-            val body = mapOf("plugin_disable.$uuid" to disable.toString())
-            val response = RetrofitClient.api.saveStorage(uuid, body)
+            val pluginId = uuid.asPluginId()
+            val body = mapOf("plugin_disable.$pluginId" to disable.toString())
+            val response = RetrofitClient.api.saveStorage(pluginId, body)
             if (response.success) Result.success(Unit)
             else Result.failure(Exception("切换禁用模式失败"))
         } catch (e: Exception) {
@@ -86,9 +95,10 @@ class PluginRepository {
 
     suspend fun getPluginDetail(uuid: String): Result<PluginRoute> {
         return try {
+            val pluginId = uuid.asPluginId()
             val response = RetrofitClient.api.getPluginList(activeKey = "tab1")
             if (response.success) {
-                val plugin = response.data.find { it.id == uuid || it.id == uuid.removePrefix("/script/") }
+                val plugin = response.data.find { it.id == pluginId }
                 if (plugin != null) {
                     Result.success(PluginRoute(
                         path = "/script/${plugin.id}",
@@ -117,7 +127,7 @@ class PluginRepository {
 
     suspend fun uninstallPlugin(uuid: String): Result<Unit> {
         return try {
-            val pluginId = uuid.removePrefix("/script/")
+            val pluginId = uuid.asPluginId()
             val response = RetrofitClient.api.uninstallPlugin(mapOf("name" to pluginId))
             if (response.success) Result.success(Unit)
             else Result.failure(Exception("卸载插件失败"))
@@ -128,8 +138,9 @@ class PluginRepository {
 
     suspend fun savePluginForm(uuid: String, formData: Map<String, Any?>): Result<Unit> {
         return try {
+            val pluginId = uuid.asPluginId()
             val body = formData.mapValues { it.value?.toString() ?: "" }
-            val response = RetrofitClient.api.saveStorage(uuid, body)
+            val response = RetrofitClient.api.saveStorage(pluginId, body)
             if (response.success) Result.success(Unit)
             else Result.failure(Exception("保存表单配置失败"))
         } catch (e: Exception) {
