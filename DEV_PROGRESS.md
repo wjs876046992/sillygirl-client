@@ -1,5 +1,24 @@
 # sillygirl-client 开发进展
 
+## 2026-06-23 操作确认 + 刷新提示
+
+### 确认对话框
+- **MastersScreen**：删除管理员确认
+- **TasksScreen**：删除任务确认 + 执行任务确认
+- **StorageScreen**：保存键值确认（显示 key 和 value 预览）
+
+### 刷新 Snackbar 提示
+- **MastersScreen**：刷新后显示"已刷新"
+- **TasksScreen**：刷新后显示"已刷新"
+- **StorageScreen**：刷新后显示"已刷新"
+- **MyPluginsScreen**：刷新后显示"已刷新"
+- **PluginMarketScreen**：刷新后显示"已刷新"
+
+### Bug 修复
+- TasksScreen.load() 修复为保留当前列表状态（刷新时不重置为空）
+
+---
+
 ## 2026-06-23 返佣订单图片迁移到 Coil
 
 - 删除 FenyongViewModel 中自定义 ImageCache 单例（~60行）
