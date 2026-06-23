@@ -26,6 +26,7 @@ data class PluginDetailUiState(
     val error: String? = null,
     val content: String = "",
     val isSaving: Boolean = false,
+    val isToggling: Boolean = false,
     val snackbarMessage: String? = null,
     val pluginDetail: PluginRoute? = null,
     val formFields: List<PluginFormField> = emptyList(),
@@ -82,15 +83,20 @@ class MyPluginsViewModel : ViewModel() {
 
     fun toggleDebug(uuid: String, debug: Boolean) {
         viewModelScope.launch {
+            _detailState.value = _detailState.value.copy(isToggling = true)
             repo.togglePluginDebug(uuid, debug).fold(
                 onSuccess = {
                     _detailState.value = _detailState.value.copy(
+                        isToggling = false,
                         pluginDetail = _detailState.value.pluginDetail?.copy(debug = debug),
                         snackbarMessage = if (debug) "已开启调试模式" else "已关闭调试模式"
                     )
                 },
                 onFailure = {
-                    _detailState.value = _detailState.value.copy(snackbarMessage = "操作失败：${it.message}")
+                    _detailState.value = _detailState.value.copy(
+                        isToggling = false,
+                        snackbarMessage = "操作失败：${it.message}"
+                    )
                 },
             )
         }
@@ -98,15 +104,35 @@ class MyPluginsViewModel : ViewModel() {
 
     fun toggleDisable(uuid: String, disable: Boolean) {
         viewModelScope.launch {
+            _detailState.value = _detailState.value.copy(isToggling = true)
             repo.togglePluginDisable(uuid, disable).fold(
                 onSuccess = {
                     _detailState.value = _detailState.value.copy(
+                        isToggling = false,
                         pluginDetail = _detailState.value.pluginDetail?.copy(disable = disable),
                         snackbarMessage = if (disable) "已禁用插件" else "已启用插件"
                     )
                 },
                 onFailure = {
-                    _detailState.value = _detailState.value.copy(snackbarMessage = "操作失败：${it.message}")
+                    _detailState.value = _detailState.value.copy(
+                        isToggling = false,
+                        snackbarMessage = "操作失败：${it.message}"
+                    )
+                },
+            )
+        }
+    }
+
+    fun uninstallPlugin(uuid: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _detailState.value = _detailState.value.copy(isSaving = true)
+            repo.uninstallPlugin(uuid).fold(
+                onSuccess = {
+                    _detailState.value = _detailState.value.copy(isSaving = false, snackbarMessage = "插件已卸载")
+                    onSuccess()
+                },
+                onFailure = {
+                    _detailState.value = _detailState.value.copy(isSaving = false, snackbarMessage = "卸载失败：${it.message}")
                 },
             )
         }

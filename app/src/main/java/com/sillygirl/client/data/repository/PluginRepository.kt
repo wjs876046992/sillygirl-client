@@ -115,6 +115,17 @@ class PluginRepository {
         }
     }
 
+    suspend fun uninstallPlugin(uuid: String): Result<Unit> {
+        return try {
+            val pluginId = uuid.removePrefix("/script/")
+            val response = RetrofitClient.api.uninstallPlugin(mapOf("name" to pluginId))
+            if (response.success) Result.success(Unit)
+            else Result.failure(Exception("卸载插件失败"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun savePluginForm(uuid: String, formData: Map<String, Any?>): Result<Unit> {
         return try {
             val body = formData.mapValues { it.value?.toString() ?: "" }

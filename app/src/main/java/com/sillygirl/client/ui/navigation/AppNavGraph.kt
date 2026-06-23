@@ -204,6 +204,11 @@ fun AppNavGraph() {
                     PluginDetailScreen(
                         plugin = plugin,
                         onBack = { navController.popBackStack() },
+                        onUninstalled = {
+                            // 卸载后刷新用户信息并返回插件列表
+                            currentUserLoaded = false
+                            navController.popBackStack()
+                        },
                     )
                 }
             }
