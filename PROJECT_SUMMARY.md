@@ -113,6 +113,8 @@ App 启动
   │
   ├── 无服务器 → ServerListScreen（添加/选择服务器）
   │
+  ├── 有服务器 + 服务器无需认证 → 直接进入 DashboardScreen ✅ 免登录
+  │
   ├── 有服务器 + 有 Token → 验证 Token
   │       │
   │       ├── Token 有效 → DashboardScreen（主页面）✅ 自动登录
@@ -138,7 +140,10 @@ App 启动
                      └── ⚙️ 设置 → SettingsScreen（退出登录）
 ```
 
-**关键改进**：用户只需输入一次账号密码，后续启动自动登录，无需手动输入。
+**关键特性**：
+- 用户只需输入一次账号密码，后续启动自动登录，无需手动输入
+- **支持无需认证的服务器**：勾选"无需认证"后可直接访问，无需输入用户名密码
+- 无需认证的服务器在列表中显示"免登录"标识
 
 All transitions use `AnimatedContentTransitionScope.SlideDirection` with 250ms tween animation.
 
@@ -185,17 +190,23 @@ All transitions use `AnimatedContentTransitionScope.SlideDirection` with 250ms t
 
 ```
 KEYS:
-  "servers"       → "url|user|pass|alias;;url2|user2|pass2|alias2"
+  "servers"       → "url|user|pass|alias|auth;;url2|user2|pass2|alias2|auth2"
   "default_index" → Int (selected server index)
   "token"         → String (auth token)
 
 ENCODING:
   "|" → "||", ";" → ";;" (custom escaping to avoid delimiter conflicts)
+
+AUTH FIELD:
+  "1" = requires authentication (username/password needed)
+  "0" = no authentication required (direct access)
 ```
 
 - Supports add/update/remove/setDefault/getDefault
 - Token cleared on logout
-- Test server auto-added when no servers exist (see Issues section)
+- **Supports servers without authentication** (requiresAuth = false)
+  - When server doesn't require auth, user can access directly without login
+  - Shows "免登录" badge in server list
 
 ### 3.5 Theme System (Theme.kt)
 
@@ -396,11 +407,12 @@ Column {
 **Features**:
 - Server list with current server indicator (green "当前" badge)
 - Add server dialog (URL, alias, username, password with visibility toggle)
+- Edit server dialog (预填充当前服务器信息，修改后保存)
 - Switch server（自动登录）：
   - 确认对话框 → 点击切换
   - 显示加载动画"正在登录..."
   - 登录成功 → 切换服务器并进入 Dashboard
-  - 登录失败 → 显示错误提示
+  - 登录失败 → 恢复原服务器地址，显示错误提示
 - Delete server (confirmation dialog)
 - Empty state with icon + instructions
 
@@ -627,7 +639,8 @@ See [PLUGIN_MANAGEMENT.md](PLUGIN_MANAGEMENT.md) for detailed design documentati
 ### 🔴 High Priority
 | # | Issue | Location |
 |---|---|---|
-| ~~1~~ | ~~**Test server hardcoded** with plaintext credentials~~ | ~~`MainActivity.kt:37-43`, `LoginScreen.kt:32-34`~~ |
+| ~~1~~ | ~~**Test server hardcoded** with plaintext credentials~~ | ~~`MainActivity.kt:37-43`~~ |
+| ~~24~~ | ~~**Service switch failure selects wrong server**~~ | ~~`ServiceScreen.kt` - 恢复原服务器地址~~ |
 
 ### 🟡 Medium Priority
 | # | Issue | Location |
@@ -648,7 +661,7 @@ See [PLUGIN_MANAGEMENT.md](PLUGIN_MANAGEMENT.md) for detailed design documentati
 |---|---|---|
 | 8 | ~~MiniAppBar duplicated in 9 files~~ | Extracted to shared `AppComponents.kt` MiniAppBar |
 | 9 | ~~ImageCache bypasses Coil~~ | Migrated to Coil 3 global loader, deleted custom ImageCache |
-| 10 | ~~ServiceScreen placeholder~~ | Full implementation: add/switch/delete servers |
+| 10 | ~~ServiceScreen placeholder~~ | Full implementation: add/edit/switch/delete servers |
 | 11 | ~~Plugin "非法操作" bug~~ | `asPluginId()` strips `/script/` prefix before API call |
 | 12 | ~~Plugin icon URL not displayed~~ | Coil 3 AsyncImage with `isIconUrl()` detection |
 | 13 | ~~Task list icon not showing~~ | Coil AsyncImage for `task.icons.firstOrNull()?.link` |
@@ -656,9 +669,11 @@ See [PLUGIN_MANAGEMENT.md](PLUGIN_MANAGEMENT.md) for detailed design documentati
 | 15 | ~~No session expiry handling~~ | OkHttp 401/403 interceptor + DisposableEffect auto-redirect |
 | 16 | ~~Duplicate dashboard entries~~ | Removed 管理员/定时任务 from FeatureGrid |
 | 17 | ~~menuAnchor() deprecation~~ | Changed to `MenuAnchorType.PrimaryNotEditable` |
-| 18 | ~~Test server hardcoded~~ | Removed test auto-fill, credentials now user-provided |
+| 18 | ~~Test server hardcoded~~ | Removed from MainActivity.kt, credentials now user-provided |
 | 19 | ~~Token lost on app restart~~ | Added `RetrofitClient.setServer()` call on startup before token verification |
 | 20 | ~~Manual login required every time~~ | Auto-login with saved credentials after server selection |
 | 21 | ~~`runBlocking` blocks main thread~~ | Changed `logout()` to suspend function |
 | 22 | ~~POST bodies not type-safe~~ | Created 8 request data classes for all POST endpoints |
 | 23 | ~~Auto-select server on startup~~ | Modified launch flow to let user choose server when no valid token |
+| 24 | ~~Service switch failure selects wrong server~~ | Save and restore original server URL on failure |
+| 25 | ~~No edit function in service management~~ | Added EditServiceDialog with pre-filled server info |

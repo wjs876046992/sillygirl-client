@@ -102,6 +102,14 @@ fun AppNavGraph() {
         val server = defaultServer!!
         RetrofitClient.setServer(server.url)
 
+        // 如果服务器无需认证，直接进入
+        if (!server.requiresAuth) {
+            RetrofitClient.token = null
+            isLoggedIn = true
+            isVerifying = false
+            return@LaunchedEffect
+        }
+
         // 尝试用保存的 token 验证
         val savedToken = serverConfig.getToken()
         if (savedToken == null) {
@@ -210,9 +218,20 @@ fun AppNavGraph() {
                 ServerListScreen(
                     viewModel = vm,
                     onServerSelected = { server: ServerConfig.ServerInfo ->
-                        // 选择服务器后自动登录
-                        navController.navigate("auto_login?url=${server.url}&username=${server.username}&password=${server.password}") {
-                            popUpTo(Routes.SERVER_LIST) { inclusive = true }
+                        if (!server.requiresAuth) {
+                            // 无需认证，直接设置服务器并进入主页面
+                            RetrofitClient.setServer(server.url)
+                            RetrofitClient.token = null
+                            isLoggedIn = true
+                            currentUserLoaded = false
+                            navController.navigate(Routes.DASHBOARD) {
+                                popUpTo(Routes.SERVER_LIST) { inclusive = true }
+                            }
+                        } else {
+                            // 需要认证，进入自动登录流程
+                            navController.navigate("auto_login?url=${server.url}&username=${server.username}&password=${server.password}") {
+                                popUpTo(Routes.SERVER_LIST) { inclusive = true }
+                            }
                         }
                     },
                 )

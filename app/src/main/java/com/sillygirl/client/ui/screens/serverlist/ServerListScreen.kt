@@ -159,11 +159,27 @@ fun ServerListItem(
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    server.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        server.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    )
+                    if (!server.requiresAuth) {
+                        Spacer(Modifier.width(8.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(4.dp),
+                        ) {
+                            Text(
+                                "免登录",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                        }
+                    }
+                }
                 Text(
                     server.url,
                     style = MaterialTheme.typography.bodySmall,
@@ -199,6 +215,7 @@ fun AddServerDialog(
     var password by remember { mutableStateOf("") }
     var alias by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
+    var requiresAuth by remember { mutableStateOf(true) }  // 默认需要认证
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -224,31 +241,43 @@ fun AddServerDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("用户名") },
-                    singleLine = true,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("密码") },
-                    singleLine = true,
-                    visualTransformation = if (showPassword) VisualTransformation.None
-                        else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { showPassword = !showPassword }) {
-                            Icon(
-                                if (showPassword) Icons.Filled.VisibilityOff
-                                else Icons.Filled.Visibility,
-                                if (showPassword) "隐藏" else "显示",
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                ) {
+                    Checkbox(
+                        checked = !requiresAuth,
+                        onCheckedChange = { requiresAuth = !it },
+                    )
+                    Text("无需认证（直接访问）")
+                }
+                if (requiresAuth) {
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text("用户名") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("密码") },
+                        singleLine = true,
+                        visualTransformation = if (showPassword) VisualTransformation.None
+                            else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showPassword = !showPassword }) {
+                                Icon(
+                                    if (showPassword) Icons.Filled.VisibilityOff
+                                    else Icons.Filled.Visibility,
+                                    if (showPassword) "隐藏" else "显示",
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 if (error != null) {
                     Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
@@ -263,6 +292,7 @@ fun AddServerDialog(
                         username = username,
                         password = password,
                         alias = alias,
+                        requiresAuth = requiresAuth,
                     ))
                 },
                 enabled = url.isNotBlank(),

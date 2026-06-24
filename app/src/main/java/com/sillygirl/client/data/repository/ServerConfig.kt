@@ -21,9 +21,10 @@ class ServerConfig(private val context: Context) {
 
     data class ServerInfo(
         val url: String,
-        val username: String,
-        val password: String,
+        val username: String = "",
+        val password: String = "",
         val alias: String = "",
+        val requiresAuth: Boolean = true, // 是否需要认证（true=需要账号密码，false=无需认证）
     ) {
         val displayName: String = alias.ifBlank { url }
     }
@@ -43,7 +44,8 @@ class ServerConfig(private val context: Context) {
             encodeField(s.url) + "|" +
             encodeField(s.username) + "|" +
             encodeField(s.password) + "|" +
-            encodeField(s.alias)
+            encodeField(s.alias) + "|" +
+            (if (s.requiresAuth) "1" else "0")
         }
         prefs.edit().putString(KEY_SERVERS, entries.joinToString(";;")).apply()
     }
@@ -124,6 +126,7 @@ class ServerConfig(private val context: Context) {
                     username = decodeField(parts[1]),
                     password = decodeField(parts[2]),
                     alias = decodeField(parts[3]),
+                    requiresAuth = if (parts.size >= 5) parts[4] == "1" else true,
                 )
             } else null
         }

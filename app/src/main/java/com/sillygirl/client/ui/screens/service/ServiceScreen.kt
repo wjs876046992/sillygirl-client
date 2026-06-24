@@ -34,10 +34,11 @@ fun ServiceScreen(
     serverConfig: ServerConfig,
 ) {
     val servers = remember { mutableStateOf(serverConfig.getServers()) }
-    val currentUrl = RetrofitClient.currentServerUrl()
+    val currentUrl = remember { mutableStateOf(RetrofitClient.currentServerUrl()) }
     var showAddDialog by remember { mutableStateOf(false) }
     var serverToSwitch by remember { mutableStateOf<Pair<Int, ServerConfig.ServerInfo>?>(null) }
     var serverToDelete by remember { mutableStateOf<Pair<Int, ServerConfig.ServerInfo>?>(null) }
+    var serverToEdit by remember { mutableStateOf<Pair<Int, ServerConfig.ServerInfo>?>(null) }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -64,10 +65,18 @@ fun ServiceScreen(
                     ) {
                         CircularProgressIndicator()
                         Spacer(Modifier.height(12.dp))
-                        Text("正在登录「${server.displayName}」...")
+                        if (server.requiresAuth) {
+                            Text("正在登录「${server.displayName}」...")
+                        } else {
+                            Text("正在连接「${server.displayName}」...")
+                        }
                     }
                 } else {
-                    Text("确定要切换到「${server.displayName}」吗？当前会话将退出。")
+                    if (server.requiresAuth) {
+                        Text("确定要切换到「${server.displayName}」吗？当前会话将退出。")
+                    } else {
+                        Text("确定要切换到「${server.displayName}」吗？（无需认证）")
+                    }
                 }
             },
             confirmButton = {
@@ -75,22 +84,42 @@ fun ServiceScreen(
                     TextButton(onClick = {
                         scope.launch {
                             isSwitching = true
-                            // 尝试自动登录
-                            val result = authRepo.login(server.url, server.username, server.password)
-                            result.fold(
-                                onSuccess = {
-                                    serverConfig.setDefaultIndex(idx)
-                                    serverConfig.saveToken(RetrofitClient.token ?: "")
-                                    isSwitching = false
-                                    serverToSwitch = null
-                                    onServerSwitched()
-                                },
-                                onFailure = { e ->
-                                    isSwitching = false
-                                    serverToSwitch = null
-                                    snackbarMessage = "登录失败: ${e.message}"
-                                }
-                            )
+                            // 保存当前服务器地址，失败时恢复
+                            val originalUrl = currentUrl.value
+
+                            if (!server.requiresAuth) {
+                                // 无需认证，直接切换
+                                RetrofitClient.setServer(server.url)
+                                RetrofitClient.token = null
+                                serverConfig.setDefaultIndex(idx)
+                                serverConfig.clearToken()
+                                currentUrl.value = server.url
+                                isSwitching = false
+                                serverToSwitch = null
+                                onServerSwitched()
+                            } else {
+                                // 需要认证，尝试自动登录
+                                val result = authRepo.login(server.url, server.username, server.password)
+                                result.fold(
+                                    onSuccess = {
+                                        serverConfig.setDefaultIndex(idx)
+                                        serverConfig.saveToken(RetrofitClient.token ?: "")
+                                        currentUrl.value = server.url
+                                        isSwitching = false
+                                        serverToSwitch = null
+                                        onServerSwitched()
+                                    },
+                                    onFailure = { e ->
+                                        // 登录失败，恢复到原来的服务器
+                                        if (originalUrl != null) {
+                                            RetrofitClient.setServer(originalUrl)
+                                        }
+                                        isSwitching = false
+                                        serverToSwitch = null
+                                        snackbarMessage = "登录失败: ${e.message}"
+                                    }
+                                )
+                            }
                         }
                     }) { Text("切换") }
                 }
@@ -141,6 +170,29 @@ fun ServiceScreen(
         )
     }
 
+    // 编辑服务器
+    serverToEdit?.let { (idx, server) ->
+        EditServiceDialog(
+            server = server,
+            onDismiss = { serverToEdit = null },
+            onSave = { updated ->
+                try {
+                    serverConfig.updateServer(idx, updated)
+                    servers.value = serverConfig.getServers()
+                    // 如果编辑的是当前服务器，更新 currentUrl
+                    if (server.url == currentUrl.value) {
+                        currentUrl.value = updated.url
+                        RetrofitClient.setServer(updated.url)
+                    }
+                    serverToEdit = null
+                    snackbarMessage = "已保存"
+                } catch (e: Exception) {
+                    snackbarMessage = e.message
+                }
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             MiniAppBar(
@@ -182,11 +234,12 @@ fun ServiceScreen(
                 }
 
                 itemsIndexed(servers.value) { index, server ->
-                    val isCurrent = server.url == currentUrl
+                    val isCurrent = server.url == currentUrl.value
                     ServiceCard(
                         server = server,
                         isCurrent = isCurrent,
                         onSwitch = { serverToSwitch = index to server },
+                        onEdit = { serverToEdit = index to server },
                         onDelete = { serverToDelete = index to server },
                     )
                 }
@@ -200,6 +253,7 @@ private fun ServiceCard(
     server: ServerConfig.ServerInfo,
     isCurrent: Boolean,
     onSwitch: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     GlassCard {
@@ -218,6 +272,12 @@ private fun ServiceCard(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(server.displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    if (!server.requiresAuth) {
+                        Spacer(Modifier.width(6.dp))
+                        Surface(shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+                            Text("免登录", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                    }
                     if (isCurrent) {
                         Spacer(Modifier.width(6.dp))
                         Surface(shape = RoundedCornerShape(4.dp), color = SuccessColor.copy(alpha = 0.12f)) {
@@ -235,6 +295,9 @@ private fun ServiceCard(
                 ) {
                     Text("切换", style = MaterialTheme.typography.labelSmall)
                 }
+            }
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Filled.Edit, "编辑", modifier = Modifier.size(20.dp))
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Filled.DeleteOutline, "删除", tint = DangerColor, modifier = Modifier.size(20.dp))
@@ -254,6 +317,7 @@ private fun AddServiceDialog(
     var password by remember { mutableStateOf("") }
     var alias by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
+    var requiresAuth by remember { mutableStateOf(true) }  // 默认需要认证
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -273,36 +337,139 @@ private fun AddServiceDialog(
                     singleLine = true, modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                 )
-                OutlinedTextField(
-                    value = username, onValueChange = { username = it },
-                    label = { Text("用户名") },
-                    singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                )
-                OutlinedTextField(
-                    value = password, onValueChange = { password = it },
-                    label = { Text("密码") },
-                    singleLine = true,
-                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { showPassword = !showPassword }) {
-                            Icon(if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null)
-                        }
-                    },
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                )
+                ) {
+                    Checkbox(
+                        checked = !requiresAuth,
+                        onCheckedChange = { requiresAuth = !it },
+                    )
+                    Text("无需认证（直接访问）")
+                }
+                if (requiresAuth) {
+                    OutlinedTextField(
+                        value = username, onValueChange = { username = it },
+                        label = { Text("用户名") },
+                        singleLine = true, modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    OutlinedTextField(
+                        value = password, onValueChange = { password = it },
+                        label = { Text("密码") },
+                        singleLine = true,
+                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showPassword = !showPassword }) {
+                                Icon(if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
                     if (url.isNotBlank()) {
-                        onAdd(ServerConfig.ServerInfo(url = url, username = username, password = password, alias = alias))
+                        onAdd(ServerConfig.ServerInfo(
+                            url = url,
+                            username = username,
+                            password = password,
+                            alias = alias,
+                            requiresAuth = requiresAuth,
+                        ))
                     }
                 },
                 enabled = url.isNotBlank(),
             ) { Text("添加") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditServiceDialog(
+    server: ServerConfig.ServerInfo,
+    onDismiss: () -> Unit,
+    onSave: (ServerConfig.ServerInfo) -> Unit,
+) {
+    var url by remember { mutableStateOf(server.url) }
+    var username by remember { mutableStateOf(server.username) }
+    var password by remember { mutableStateOf(server.password) }
+    var alias by remember { mutableStateOf(server.alias) }
+    var showPassword by remember { mutableStateOf(false) }
+    var requiresAuth by remember { mutableStateOf(server.requiresAuth) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("编辑服务器") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = url, onValueChange = { url = it },
+                    label = { Text("服务器地址") },
+                    placeholder = { Text("http://192.168.1.18:3000") },
+                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+                OutlinedTextField(
+                    value = alias, onValueChange = { alias = it },
+                    label = { Text("别名（可选）") },
+                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Checkbox(
+                        checked = !requiresAuth,
+                        onCheckedChange = { requiresAuth = !it },
+                    )
+                    Text("无需认证（直接访问）")
+                }
+                if (requiresAuth) {
+                    OutlinedTextField(
+                        value = username, onValueChange = { username = it },
+                        label = { Text("用户名") },
+                        singleLine = true, modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    OutlinedTextField(
+                        value = password, onValueChange = { password = it },
+                        label = { Text("密码") },
+                        singleLine = true,
+                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showPassword = !showPassword }) {
+                                Icon(if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (url.isNotBlank()) {
+                        onSave(ServerConfig.ServerInfo(
+                            url = url,
+                            username = username,
+                            password = password,
+                            alias = alias,
+                            requiresAuth = requiresAuth,
+                        ))
+                    }
+                },
+                enabled = url.isNotBlank(),
+            ) { Text("保存") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
     )
