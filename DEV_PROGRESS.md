@@ -1,5 +1,54 @@
 # sillygirl-client 开发进展
 
+## 2026-06-24 本次会话完成的工作
+
+### 一、自动登录优化
+
+**问题描述：**
+- 原流程需要手动输入用户名密码登录
+- 杀掉 App 后 cookie/token 丢失，需要重新登录
+
+**解决方案：**
+
+1. **自动登录流程**
+   - 添加服务器时保存用户名密码到 SharedPreferences
+   - 选择服务器后自动登录，无需手动输入
+   - App 启动时自动用保存的凭证登录
+
+2. **Token 持久化修复**
+   - 启动时先调用 `RetrofitClient.setServer()` 恢复服务器地址
+   - 再恢复 token，验证会话有效性
+   - 如果 token 过期，自动用保存的凭证重新登录
+
+**修改文件：**
+- `AppNavGraph.kt` - 添加自动登录路由和启动逻辑
+- `LoginScreen.kt` - 添加 AutoLoginScreen 组件
+- `ServiceScreen.kt` - 切换服务器时自动登录
+- `gradle.properties` - 修复 Java 路径
+
+**新流程：**
+```
+App 启动
+  ↓
+读取 SharedPreferences（服务器地址 + token + 用户名密码）
+  ↓
+RetrofitClient.setServer() → 恢复服务器地址
+  ↓
+RetrofitClient.token = savedToken → 恢复 token
+  ↓
+验证 token
+  ├─ 有效 → Dashboard（无需重新登录）
+  └─ 无效 → 自动用保存的凭证登录 → Dashboard
+```
+
+### 二、Bug 修复
+
+1. **启动时 Token 无效问题**
+   - 根因：启动时只恢复了 token，没有设置服务器地址
+   - 修复：在 `AppNavGraph.kt` 启动逻辑中先调用 `RetrofitClient.setServer(server.url)`
+
+---
+
 ## 2026-06-23 本次会话完成的工作
 
 ### 一、插件管理优化

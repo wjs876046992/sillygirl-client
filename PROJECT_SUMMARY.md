@@ -1,6 +1,6 @@
 # SillyGirl Client Project Summary
 
-> Auto-generated for agent readability. Last updated: 2026-06-23 (latest session)
+> Auto-generated for agent readability. Last updated: 2026-06-24 (latest session)
 
 ## 1. Repository Overview
 
@@ -112,14 +112,22 @@ MainActivity
 App 启动
   │
   ├── 无服务器 → ServerListScreen（添加/选择服务器）
-  │                    │
-  │                    └── 选择服务器 → LoginScreen
   │
-  ├── 有服务器，无 Token → LoginScreen（输入账号密码）
-  │                           │
-  │                           └── 登录成功 → DashboardScreen
+  ├── 有服务器 + 有 Token → 验证 Token
+  │       │
+  │       ├── Token 有效 → DashboardScreen（主页面）✅ 自动登录
+  │       │
+  │       └── Token 无效 → 自动用保存的凭证登录
+  │               │
+  │               ├── 登录成功 → DashboardScreen ✅ 自动登录
+  │               └── 登录失败 → ServerListScreen
   │
-  └── 有 Token → DashboardScreen（主页面）
+  ├── 有服务器 + 无 Token → 自动用保存的凭证登录
+  │       │
+  │       ├── 登录成功 → DashboardScreen ✅ 自动登录
+  │       └── 登录失败 → ServerListScreen
+  │
+  └── DashboardScreen（主页面）
                      │
                      ├── 💰 分佣概览卡片 → FenyongScreen
                      ├── 🧩 插件市场 → PluginMarketScreen
@@ -130,23 +138,36 @@ App 启动
                      └── ⚙️ 设置 → SettingsScreen（退出登录）
 ```
 
+**关键改进**：用户只需输入一次账号密码，后续启动自动登录，无需手动输入。
+
 All transitions use `AnimatedContentTransitionScope.SlideDirection` with 250ms tween animation.
 
-**Routes (11 total)**:
+**Routes (12 total)**:
 - `server_list` — Server list (starting point when no server configured)
-- `login` — Authentication
+- `login` — Authentication (manual login, backup)
+- `auto_login?url={url}&username={username}&password={password}` — Auto login after server selection
 - `dashboard` — Home page after login
 - `fenyong` — Commission system (orders + statistics)
 - `my_plugins` — Installed plugins
 - `plugin_market` — Plugin marketplace
 - `masters` — Admin management
 - `tasks` — Cron tasks
-- `service` — Service management (WIP)
+- `service` — Service management
 - `storage` — KV storage viewer/editor
 - `settings` — Settings (logout)
 
 ### 3.3 Authentication Flow
 
+**自动登录流程（新增）：**
+1. App 启动，从 `ServerConfig` 读取保存的服务器信息
+2. `RetrofitClient.setServer(server.url)` 恢复服务器地址
+3. 检查是否有保存的 Token
+   - 有 Token → 验证 Token 有效性
+   - 无 Token → 用保存的用户名密码自动登录
+4. Token 有效/登录成功 → 进入 Dashboard
+5. Token 无效/登录失败 → 跳转 ServerListScreen
+
+**手动登录流程（备用）：**
 1. User selects server from `ServerListScreen`
 2. `RetrofitClient.setServer(server.url)` + load saved token
 3. Navigate to `LoginScreen`
@@ -155,6 +176,8 @@ All transitions use `AnimatedContentTransitionScope.SlideDirection` with 250ms t
 6. Saves token to `ServerConfig.saveToken()` + `RetrofitClient.token`
 7. `AppNavGraph` loads `CurrentUser` to cache `UserData`
 8. All subsequent requests get `X-Token: <token>` header via OkHttp interceptor
+
+**关键改进**：用户只需输入一次账号密码，后续启动自动登录，无需手动输入。
 
 ### 3.4 Server Persistence (ServerConfig)
 
@@ -246,12 +269,18 @@ Provided in `MainActivity.setContent {}`, consumed in `LoginScreen`, `SettingsSc
 
 **Data loading**: Parallel fetch from `MasterRepository`, `TaskRepository`, `FenyongRepository`.
 
-### 4.2 LoginScreen + LoginViewModel
+### 4.2 LoginScreen + LoginViewModel + AutoLoginScreen
 
 **UI State**: `LoginUiState(serverUrl, username, password, isLoading, error, isLoggedIn)`
 
-**Behavior**:
-- Auto-fills test credentials on launch (`LaunchedEffect`)
+**AutoLoginScreen（自动登录页面，新增）**：
+- 选择服务器后自动跳转
+- 显示加载动画和服务器地址
+- 登录成功 → Dashboard
+- 登录失败 → 返回服务器列表
+- 使用保存的用户名密码自动登录
+
+**LoginScreen（手动登录页面，备用）**：
 - Validates all fields non-blank before submit
 - On success: saves credentials to `ServerConfig`, sets `isLoggedIn=true`
 - Uses `LoginViewModelFactory` to inject `ServerConfig`
@@ -367,7 +396,11 @@ Column {
 **Features**:
 - Server list with current server indicator (green "当前" badge)
 - Add server dialog (URL, alias, username, password with visibility toggle)
-- Switch server (confirmation → setDefault + setServer + clearToken → navigate to login)
+- Switch server（自动登录）：
+  - 确认对话框 → 点击切换
+  - 显示加载动画"正在登录..."
+  - 登录成功 → 切换服务器并进入 Dashboard
+  - 登录失败 → 显示错误提示
 - Delete server (confirmation dialog)
 - Empty state with icon + instructions
 
@@ -594,7 +627,7 @@ See [PLUGIN_MANAGEMENT.md](PLUGIN_MANAGEMENT.md) for detailed design documentati
 ### 🔴 High Priority
 | # | Issue | Location |
 |---|---|---|
-| 1 | **Test server hardcoded** with plaintext credentials (`192.168.1.12:8081`, `silly`, `yKAuGG58S4zKHS`) | `MainActivity.kt:37-43`, `LoginScreen.kt:32-34` |
+| ~~1~~ | ~~**Test server hardcoded** with plaintext credentials~~ | ~~`MainActivity.kt:37-43`, `LoginScreen.kt:32-34`~~ |
 
 ### 🟡 Medium Priority
 | # | Issue | Location |
@@ -623,3 +656,6 @@ See [PLUGIN_MANAGEMENT.md](PLUGIN_MANAGEMENT.md) for detailed design documentati
 | 15 | ~~No session expiry handling~~ | OkHttp 401/403 interceptor + DisposableEffect auto-redirect |
 | 16 | ~~Duplicate dashboard entries~~ | Removed 管理员/定时任务 from FeatureGrid |
 | 17 | ~~menuAnchor() deprecation~~ | Changed to `MenuAnchorType.PrimaryNotEditable` |
+| 18 | ~~Test server hardcoded~~ | Removed test auto-fill, credentials now user-provided |
+| 19 | ~~Token lost on app restart~~ | Added `RetrofitClient.setServer()` call on startup before token verification |
+| 20 | ~~Manual login required every time~~ | Auto-login with saved credentials after server selection |
