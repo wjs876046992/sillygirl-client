@@ -12,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -23,6 +22,7 @@ import com.sillygirl.client.data.repository.ServerConfig
 import com.sillygirl.client.ui.components.GlassCard
 import com.sillygirl.client.ui.theme.DangerColor
 import com.sillygirl.client.ui.theme.SuccessColor
+import com.sillygirl.client.ui.theme.themeShadow
 import com.sillygirl.client.ui.components.MiniAppBar
 import kotlinx.coroutines.launch
 
@@ -205,7 +205,7 @@ private fun ServiceCard(
     GlassCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
+                modifier = Modifier.size(40.dp).themeShadow(4.dp, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(

@@ -65,6 +65,8 @@ data class PluginFormField(
     val type: String = "text", // text, number, switch, select
     val value: Any? = null,
     val options: List<PluginFormOption> = emptyList(),
+    val tooltip: String = "",
+    val required: Boolean = false,
 )
 
 data class PluginFormOption(
@@ -279,4 +281,69 @@ data class TaskInfo(
 data class TaskIcon(
     val link: String = "",
     val title: String = "",
+)
+
+// ===== Request Models (类型安全的请求数据类) =====
+
+/**
+ * 登录请求
+ */
+data class LoginRequest(
+    val username: String,
+    val password: String,
+)
+
+/**
+ * 插件操作请求 (run/stop/install/uninstall)
+ */
+data class PluginRequest(
+    val name: String,
+)
+
+/**
+ * 管理员添加请求
+ */
+data class MasterAddRequest(
+    val platform: String,
+    val number: String,
+)
+
+/**
+ * 管理员删除请求
+ */
+data class MasterDelRequest(
+    val id: String,
+)
+
+/**
+ * 任务添加/编辑请求
+ */
+data class TaskAddRequest(
+    val title: String,
+    val schedule: String,
+    val command: String,
+    val remark: String = "",
+)
+
+data class TaskEditRequest(
+    val id: String,
+    val title: String,
+    val schedule: String,
+    val command: String,
+    val remark: String = "",
+)
+
+/**
+ * 任务删除/运行请求
+ */
+data class TaskActionRequest(
+    val id: String,
+)
+
+/**
+ * 任务启用/禁用请求
+ */
+data class TaskSetEnableRequest(
+    val id: String,
+    val enable: Boolean,
 )

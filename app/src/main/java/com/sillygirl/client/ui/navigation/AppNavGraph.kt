@@ -105,28 +105,10 @@ fun AppNavGraph() {
         // 尝试用保存的 token 验证
         val savedToken = serverConfig.getToken()
         if (savedToken == null) {
-            // 无 token，检查是否有保存的用户名密码，自动登录
-            if (server.username.isNotBlank() && server.password.isNotBlank()) {
-                // 有保存的凭证，自动登录
-                withContext(Dispatchers.IO) {
-                    authRepo.login(server.url, server.username, server.password)
-                }.fold(
-                    onSuccess = {
-                        serverConfig.saveToken(RetrofitClient.token ?: "")
-                        isLoggedIn = true
-                        isVerifying = false
-                    },
-                    onFailure = {
-                        // 自动登录失败，跳转到服务器列表
-                        isLoggedIn = false
-                        isVerifying = false
-                    }
-                )
-            } else {
-                // 无保存凭证，跳转到服务器列表
-                isLoggedIn = false
-                isVerifying = false
-            }
+            // 无 token，跳转到服务器列表让用户选择
+            // 不再自动登录，让用户主动选择
+            isLoggedIn = false
+            isVerifying = false
             return@LaunchedEffect
         }
 
@@ -140,31 +122,11 @@ fun AppNavGraph() {
                 isVerifying = false
             },
             onFailure = {
-                // token 过期，尝试用保存的凭证自动登录
-                if (server.username.isNotBlank() && server.password.isNotBlank()) {
-                    withContext(Dispatchers.IO) {
-                        authRepo.login(server.url, server.username, server.password)
-                    }.fold(
-                        onSuccess = {
-                            serverConfig.saveToken(RetrofitClient.token ?: "")
-                            isLoggedIn = true
-                            isVerifying = false
-                        },
-                        onFailure = {
-                            // 自动登录失败，清除 token，跳转到服务器列表
-                            serverConfig.clearToken()
-                            RetrofitClient.token = null
-                            isLoggedIn = false
-                            isVerifying = false
-                        }
-                    )
-                } else {
-                    // 无保存凭证，清除 token，跳转到服务器列表
-                    serverConfig.clearToken()
-                    RetrofitClient.token = null
-                    isLoggedIn = false
-                    isVerifying = false
-                }
+                // token 过期，清除 token，跳转到服务器列表让用户重新选择
+                serverConfig.clearToken()
+                RetrofitClient.token = null
+                isLoggedIn = false
+                isVerifying = false
             }
         )
     }
@@ -172,22 +134,42 @@ fun AppNavGraph() {
     // 加载用户信息并缓存
     LaunchedEffect(isLoggedIn, currentUserLoaded) {
         if (isLoggedIn && !currentUserLoaded) {
+            // 先设置为true防止重复调用
+            currentUserLoaded = true
             scope.launch {
-                withContext(Dispatchers.IO) {
-                    authRepo.getCurrentUserInfo()
-                }.fold(
-                    onSuccess = { currentUser = it },
-                    onFailure = {
+                try {
+                    // 先获取原始响应以便调试
+                    val response = withContext(Dispatchers.IO) {
+                        RetrofitClient.api.getCurrentUser()
+                    }
+                    android.util.Log.d("AppNavGraph", "Raw response: success=${response.success}, data=${response.data}")
+                    response.data?.let {
+                        android.util.Log.d("AppNavGraph", "User data: name='${it.name}', avatar='${it.avatar}', plugins=${it.plugins.size}")
+                        android.util.Log.d("AppNavGraph", "First 3 plugins: ${it.plugins.take(3).map { p -> p.title }}")
+                    } ?: run {
+                        android.util.Log.e("AppNavGraph", "User data is null!")
+                    }
+
+                    if (response.success && response.data != null) {
+                        currentUser = response.data
+                    } else {
                         // 用户信息加载失败，可能 token 已过期
+                        android.util.Log.e("AppNavGraph", "Failed to load user info: success=${response.success}")
                         serverConfig.clearToken()
                         RetrofitClient.token = null
                         currentUser = null
                         currentUserLoaded = false
                         isLoggedIn = false
                     }
-                )
+                } catch (e: Exception) {
+                    android.util.Log.e("AppNavGraph", "Exception loading user info", e)
+                    serverConfig.clearToken()
+                    RetrofitClient.token = null
+                    currentUser = null
+                    currentUserLoaded = false
+                    isLoggedIn = false
+                }
             }
-            currentUserLoaded = true
         }
     }
 

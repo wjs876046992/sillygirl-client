@@ -1,5 +1,193 @@
 # sillygirl-client 开发进展
 
+## 2026-06-24 第三次会话完成的工作
+
+### 一、插件编辑器代码高亮
+
+**问题描述：**
+- 插件代码编辑器使用普通 OutlinedTextField，没有语法高亮
+- 代码可读性差，不利于编辑和调试
+
+**解决方案：**
+实现 JavaScript 语法高亮编辑器，支持以下语法元素着色：
+- **关键字** (async, await, function, const, let, var 等) - 紫色
+- **字符串** (单引号、双引号、反引号) - 绿色
+- **注释** (单行 // 和多行 /* */) - 灰色斜体
+- **数字** - 橙色
+- **函数名** (后跟括号) - 蓝色
+- **内置对象** (console, document, Math 等) - 紫色
+- **运算符** - 青色
+- **标点符号** - 浅灰色
+- **对象属性** (点号后面) - 红色
+
+**技术实现：**
+- 创建 `JavaScriptHighlightTransformation` 实现 `VisualTransformation`
+- 创建 `SyntaxColors` 类管理语法颜色配置
+- 使用 `AnnotatedString` 和 `SpanStyle` 实现文本着色
+- 编辑器使用等宽字体 (FontFamily.Monospace)
+
+**修改文件：**
+- `PluginScreens.kt` - 新增 `CodeEditor`、`SyntaxColors`、`JavaScriptHighlightTransformation` 组件
+
+### 二、插件列表和详情显示 origin
+
+**问题描述：**
+- 插件列表卡片只显示 author，origin 信息不明显
+- 用户需要知道插件来源（官方/第三方）
+
+**解决方案：**
+在插件列表卡片底部信息行中：
+- 如果 author 存在，显示 author
+- 如果 origin 存在，显示 origin 标签（使用 tertiaryContainer 背景色）
+
+**修改文件：**
+- `PluginScreens.kt` - 修改 `MyPluginCard` 底部信息行，添加 origin 显示
+
+### 三、插件表单功能增强
+
+**问题描述：**
+- 原有表单功能需要后端返回 `formFields`
+- 无法从插件代码中自动提取表单定义
+- 用户看不到已配置的表单值
+
+**解决方案：**
+
+1. **从插件代码解析 @form 注释**
+   - 创建 `PluginRepository.parseFormFromCode()` 方法
+   - 使用正则表达式匹配 `@form {key: "xxx", title: "xxx", ...}` 格式
+   - 支持的属性：`key`, `title`, `tooltip`, `valueType`, `required`, `default`, `options`
+
+2. **表单值存储和读取**
+   - 新增 `getPluginFormValues()` 方法，从 `plugin_form.{uuid}` 读取
+   - 新增 `savePluginFormValues()` 方法，保存到 `plugin_form.{uuid}`
+   - 表单值以 JSON 字符串格式存储
+
+3. **增强表单 UI**
+   - 显示必填标记（红色 *）
+   - 显示 tooltip 提示信息
+   - 显示配置项数量统计
+   - 改进的输入框 placeholder
+
+4. **ViewModel 更新**
+   - 并行加载插件内容和表单值
+   - 从代码解析表单字段并与存储值合并
+   - 保存表单时同步更新状态
+
+**@form 注释格式示例：**
+```javascript
+/**
+ * @form {key: "api.token", title: "API Token", tooltip: "请输入API令牌", required: true}
+ * @form {key: "api.mode", title: "工作模式", valueType: "select", options: "normal:普通模式,advanced:高级模式"}
+ * @form {key: "api.debug", title: "调试模式", valueType: "switch"}
+ */
+```
+
+**修改文件：**
+- `PluginRepository.kt` - 新增表单解析和存储方法
+- `PluginViewModels.kt` - 更新加载和保存逻辑
+- `PluginScreens.kt` - 增强 PluginFormCard UI
+- `Models.kt` - PluginFormField 添加 tooltip/required 字段
+
+---
+
+## 2026-06-24 第二次会话完成的工作
+
+### 一、修复已知问题
+
+#### 1. 修复 `runBlocking` 阻塞主线程问题（高优先级）
+- **文件**: `AuthRepository.kt`
+- **修改**: 将 `logout()` 方法从同步函数改为 `suspend` 函数，移除了 `runBlocking`
+- **影响**: 登出操作不再阻塞主线程，避免应用无响应（ANR）
+
+#### 2. 创建类型安全的请求数据类
+- **新增数据类** (在 `Models.kt`):
+  - `LoginRequest` - 登录请求
+  - `PluginRequest` - 插件操作请求
+  - `MasterAddRequest` - 管理员添加请求
+  - `MasterDelRequest` - 管理员删除请求
+  - `TaskAddRequest` - 任务添加请求
+  - `TaskEditRequest` - 任务编辑请求
+  - `TaskActionRequest` - 任务操作请求（删除/运行）
+  - `TaskSetEnableRequest` - 任务启用/禁用请求
+
+- **更新的API接口** (`SillyGirlApi.kt`):
+  - 所有POST接口使用类型安全的数据类替代 `Map<String, String>`
+  - `login()` 使用 `LoginRequest`
+  - `runPlugin()`, `stopPlugin()`, `installPlugin()`, `uninstallPlugin()` 使用 `PluginRequest`
+  - `addMaster()` 使用 `MasterAddRequest`
+  - `delMaster()` 使用 `MasterDelRequest`
+  - `addTask()` 使用 `TaskAddRequest`
+  - `editTask()` 使用 `TaskEditRequest`
+  - `delTask()`, `runTask()` 使用 `TaskActionRequest`
+  - `setTaskEnable()` 使用 `TaskSetEnableRequest`
+
+- **更新的Repository和ViewModel**:
+  - `AuthRepository.kt` - login() 使用 `LoginRequest`
+  - `PluginRepository.kt` - uninstallPlugin() 使用 `PluginRequest`
+  - `MastersScreen.kt` - addMaster() 和 delMaster() 使用新数据类
+  - `TasksScreen.kt` - toggleTask(), deleteTask(), runTask() 使用新数据类
+  - `PluginViewModels.kt` - installPlugin() 使用 `PluginRequest`
+
+### 二、优化启动验证流程
+
+#### 问题描述
+覆盖安装后，应用默认选择了一个服务器并自动登录，用户无法选择其他服务器。
+
+#### 解决方案
+修改 `AppNavGraph.kt` 中的启动验证逻辑：
+- **无Token时**: 跳转服务器列表让用户选择（不再自动登录）
+- **Token过期时**: 跳转服务器列表让用户选择（不再尝试自动登录）
+- **Token有效时**: 直接进入Dashboard（不变）
+
+#### 新的启动流程
+```
+App启动
+  │
+  ├── 无服务器 → ServerListScreen（添加服务器）
+  │
+  ├── 有服务器 + 无Token → ServerListScreen（选择服务器）
+  │
+  ├── 有服务器 + Token无效 → ServerListScreen（选择服务器）
+  │
+  └── 有服务器 + Token有效 → Dashboard（自动登录）✅
+```
+
+### 三、增强错误处理和日志
+
+1. **DashboardViewModel**: 添加详细日志记录，错误信息会汇总显示在界面上
+2. **AuthRepository**: 添加登录、验证会话、获取用户信息的日志
+3. **AppNavGraph**: 添加用户信息加载的调试日志
+
+### 四、相关文件修改清单
+
+| 文件 | 修改内容 |
+|------|----------|
+| `AuthRepository.kt` | logout改为suspend，添加日志 |
+| `Models.kt` | 新增8个请求数据类 |
+| `SillyGirlApi.kt` | 所有POST接口使用类型安全数据类 |
+| `PluginRepository.kt` | uninstallPlugin使用PluginRequest |
+| `MastersScreen.kt` | addMaster/delMaster使用新数据类 |
+| `TasksScreen.kt` | toggleTask/deleteTask/runTask使用新数据类 |
+| `PluginViewModels.kt` | installPlugin使用PluginRequest |
+| `DashboardViewModel.kt` | 增强错误处理和日志 |
+| `AppNavGraph.kt` | 优化启动验证流程，添加调试日志 |
+
+### 五、技术笔记
+
+1. **`saveStorage` API保持使用 `Map<String, String>`**
+   - 这是通用的KV存储API，需要支持动态的键值对
+   - 不适合使用固定的数据类
+
+2. **分佣API返回404是正常的**
+   - 后端需要配置MongoDB才能使用分佣功能
+   - 配置项: `fanli.mongodb`
+
+3. **启动验证流程优化**
+   - 移除了自动登录逻辑，让用户主动选择服务器
+   - 避免了默认使用某个服务器的问题
+
+---
+
 ## 2026-06-24 本次会话完成的工作
 
 ### 一、自动登录优化

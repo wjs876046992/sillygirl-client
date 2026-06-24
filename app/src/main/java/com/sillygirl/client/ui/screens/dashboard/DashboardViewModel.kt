@@ -1,5 +1,6 @@
 package com.sillygirl.client.ui.screens.dashboard
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sillygirl.client.data.repository.MasterRepository
@@ -23,6 +24,7 @@ data class DashboardUiState(
 )
 
 class DashboardViewModel : ViewModel() {
+    private val TAG = "DashboardViewModel"
     private val masterRepo = MasterRepository()
     private val taskRepo = TaskRepository()
     private val fenyongRepo = FenyongRepository()
@@ -31,6 +33,7 @@ class DashboardViewModel : ViewModel() {
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
+        Log.d(TAG, "DashboardViewModel initialized, loading dashboard...")
         loadDashboard()
     }
 
@@ -41,18 +44,61 @@ class DashboardViewModel : ViewModel() {
                 var masters = 0
                 var tasks = 0
                 var fenyongDashboard: FenyongDashboardResponse? = null
+                val errors = mutableListOf<String>()
 
-                try { masters = masterRepo.getMasters().getOrThrow().size } catch (_: Exception) {}
-                try { tasks = taskRepo.getTasks().getOrThrow().count { it.enable } } catch (_: Exception) {}
-                try { fenyongDashboard = fenyongRepo.getDashboard().getOrThrow() } catch (_: Exception) {}
+                try {
+                    val mastersResult = masterRepo.getMasters()
+                    mastersResult.fold(
+                        onSuccess = { masters = it.size },
+                        onFailure = { e ->
+                            Log.e(TAG, "Failed to load masters", e)
+                            errors.add("管理员: ${e.message}")
+                        }
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception loading masters", e)
+                    errors.add("管理员: ${e.message}")
+                }
+
+                try {
+                    val tasksResult = taskRepo.getTasks()
+                    tasksResult.fold(
+                        onSuccess = { tasks = it.count { task -> task.enable } },
+                        onFailure = { e ->
+                            Log.e(TAG, "Failed to load tasks", e)
+                            errors.add("任务: ${e.message}")
+                        }
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception loading tasks", e)
+                    errors.add("任务: ${e.message}")
+                }
+
+                try {
+                    val fenyongResult = fenyongRepo.getDashboard()
+                    fenyongResult.fold(
+                        onSuccess = { fenyongDashboard = it },
+                        onFailure = { e ->
+                            Log.e(TAG, "Failed to load fenyong dashboard", e)
+                            errors.add("分佣: ${e.message}")
+                        }
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception loading fenyong dashboard", e)
+                    errors.add("分佣: ${e.message}")
+                }
+
+                Log.d(TAG, "Dashboard loaded: masters=$masters, tasks=$tasks, fenyong=${fenyongDashboard != null}")
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     masterCount = masters,
                     activeTaskCount = tasks,
                     fenyongDashboard = fenyongDashboard,
+                    error = if (errors.isNotEmpty()) errors.joinToString("\n") else null,
                 )
             } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error loading dashboard", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "加载异常",

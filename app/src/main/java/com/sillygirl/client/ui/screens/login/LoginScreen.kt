@@ -11,7 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
@@ -28,6 +27,7 @@ import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.repository.AuthRepository
 import com.sillygirl.client.data.repository.ServerConfig
 import com.sillygirl.client.ui.theme.PrimaryGradientColors
+import com.sillygirl.client.ui.theme.themeShadow
 import com.sillygirl.client.ui.screens.login.LoginViewModelFactory
 import kotlinx.coroutines.launch
 
@@ -67,7 +67,7 @@ fun LoginScreen(
                 Box(
                     modifier = Modifier
                         .size(150.dp)
-                        .shadow(30.dp, RoundedCornerShape(50))
+                        .themeShadow(30.dp, RoundedCornerShape(50))
                         .clip(RoundedCornerShape(50))
                         .background(
                             brush = Brush.horizontalGradient(PrimaryGradientColors),
@@ -78,7 +78,7 @@ fun LoginScreen(
                 Card(
                     modifier = Modifier
                         .size(72.dp)
-                        .shadow(12.dp, RoundedCornerShape(20.dp)),
+                        .themeShadow(12.dp, RoundedCornerShape(20.dp)),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                 ) {
@@ -195,7 +195,7 @@ fun LoginScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .shadow(8.dp, RoundedCornerShape(14.dp))
+                    .themeShadow(8.dp, RoundedCornerShape(14.dp))
                     .background(
                         brush = Brush.horizontalGradient(PrimaryGradientColors),
                         shape = RoundedCornerShape(14.dp),
@@ -277,7 +277,7 @@ fun AutoLoginScreen(
                 Box(
                     modifier = Modifier
                         .size(120.dp)
-                        .shadow(24.dp, RoundedCornerShape(40))
+                        .themeShadow(24.dp, RoundedCornerShape(40))
                         .clip(RoundedCornerShape(40))
                         .background(
                             brush = Brush.horizontalGradient(PrimaryGradientColors),

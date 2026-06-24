@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
@@ -218,7 +217,7 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
     val actualAmount = order.content.firstOrNull { it.label == "实际佣金" }?.value?.toString() ?: "0.00"
 
     GlassCard(
-        modifier = Modifier.fillMaxWidth().shadow(4.dp, RoundedCornerShape(16.dp)),
+        modifier = Modifier.fillMaxWidth().themeShadow(4.dp, RoundedCornerShape(16.dp)),
     ) {
         // 上半部分：商品图 + 标题/标签
         Row(

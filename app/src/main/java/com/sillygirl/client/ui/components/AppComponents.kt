@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -33,7 +32,7 @@ fun GradientCard(
 ) {
     Card(
         modifier = modifier
-            .shadow(12.dp, RoundedCornerShape(20.dp)),
+            .themeShadow(12.dp, RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
@@ -72,7 +71,7 @@ fun GlassCard(
 
     Surface(
         modifier = clickableModifier
-            .shadow(6.dp, RoundedCornerShape(16.dp)),
+            .themeShadow(6.dp, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 2.dp,

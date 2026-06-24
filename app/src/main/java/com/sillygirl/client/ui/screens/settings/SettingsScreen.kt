@@ -10,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +22,7 @@ import com.sillygirl.client.data.repository.ServerConfig
 import com.sillygirl.client.ui.screens.settings.SettingsViewModelFactory
 import com.sillygirl.client.ui.theme.DangerColor
 import com.sillygirl.client.ui.theme.PrimaryGradientColors
+import com.sillygirl.client.ui.theme.themeShadow
 import com.sillygirl.client.ui.components.MiniAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,7 +79,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Card(
-                modifier = Modifier.fillMaxWidth().shadow(6.dp, RoundedCornerShape(16.dp)),
+                modifier = Modifier.fillMaxWidth().themeShadow(6.dp, RoundedCornerShape(16.dp)),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             ) {
@@ -95,7 +95,7 @@ fun SettingsScreen(
             }
 
             Card(
-                modifier = Modifier.fillMaxWidth().shadow(6.dp, RoundedCornerShape(16.dp)),
+                modifier = Modifier.fillMaxWidth().themeShadow(6.dp, RoundedCornerShape(16.dp)),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             ) {
@@ -104,7 +104,7 @@ fun SettingsScreen(
                     Spacer(Modifier.height(10.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
+                            modifier = Modifier.size(40.dp).themeShadow(4.dp, RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text("🤖", fontSize = 20.sp)
@@ -123,7 +123,7 @@ fun SettingsScreen(
             Button(
                 onClick = { showLogoutDialog = true },
                 enabled = !uiState.isLoggingOut,
-                modifier = Modifier.fillMaxWidth().height(50.dp).shadow(6.dp, RoundedCornerShape(14.dp)),
+                modifier = Modifier.fillMaxWidth().height(50.dp).themeShadow(6.dp, RoundedCornerShape(14.dp)),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = DangerColor),
             ) {

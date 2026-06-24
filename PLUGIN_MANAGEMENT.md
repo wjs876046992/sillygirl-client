@@ -274,17 +274,44 @@ plugin_disable.{pluginId} = true/false
 
 ## 7. 待实现功能
 
-- [ ] 插件表单的 select 类型支持
+- [x] 插件表单的 select 类型支持
 - [ ] 插件表单的 validation 验证
-- [ ] 插件代码语法高亮
+- [x] 插件代码语法高亮
 - [ ] 插件运行日志查看
-- [ ] 插件卸载功能
+- [x] 插件卸载功能
 - [ ] 插件分享功能
 
-## 8. 注意事项
+## 8. @form 注释格式
+
+插件代码中的 `@form` 注释用于定义表单配置项：
+
+```javascript
+/**
+ * @form {key: "config.token", title: "API Token", tooltip: "请输入令牌", required: true}
+ * @form {key: "config.mode", title: "模式", valueType: "select", options: "normal:普通,advanced:高级"}
+ * @form {key: "config.debug", title: "调试", valueType: "switch"}
+ * @form {key: "config.count", title: "数量", valueType: "number", default: "10"}
+ */
+```
+
+**支持的属性：**
+| 属性 | 说明 | 示例 |
+|------|------|------|
+| key | 配置项key（必填） | `api.token` |
+| title | 显示标题（必填） | `API Token` |
+| tooltip | 提示信息 | `请输入令牌` |
+| valueType | 值类型 | `text`, `switch`, `number`, `select` |
+| required | 是否必填 | `true`, `false` |
+| default | 默认值 | `10` |
+| options | 选项（select用） | `opt1:选项1,opt2:选项2` |
+
+**存储格式：**
+- 表单值存储在 `plugin_form.{uuid}` 中，格式为 JSON 字符串
+
+## 9. 注意事项
 
 1. **插件路径**：插件的唯一标识是 `path` 字段（UUID 格式）
 2. **表单保存**：保存表单后会自动触发插件重载
-3. **代码编辑**：代码编辑器使用简单的 OutlinedTextField，后续可以替换为代码编辑器组件
+3. **代码编辑**：代码编辑器支持 JavaScript 语法高亮，使用等宽字体
 4. **错误处理**：所有 API 调用都有错误处理和 snackbar 提示
 5. **状态管理**：使用 StateFlow + collectAsStateWithLifecycle 管理状态

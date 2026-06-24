@@ -1,9 +1,14 @@
 package com.sillygirl.client.data.repository
 
+import android.util.Log
 import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.model.*
 
 class PluginRepository {
+
+    private companion object {
+        const val TAG = "PluginRepository"
+    }
 
     /** 统一将 path（如 /script/uuid）转为纯 UUID */
     private fun String.asPluginId(): String = removePrefix("/script/")
@@ -128,7 +133,7 @@ class PluginRepository {
     suspend fun uninstallPlugin(uuid: String): Result<Unit> {
         return try {
             val pluginId = uuid.asPluginId()
-            val response = RetrofitClient.api.uninstallPlugin(mapOf("name" to pluginId))
+            val response = RetrofitClient.api.uninstallPlugin(PluginRequest(name = pluginId))
             if (response.success) Result.success(Unit)
             else Result.failure(Exception("卸载插件失败"))
         } catch (e: Exception) {
@@ -144,6 +149,175 @@ class PluginRepository {
             if (response.success) Result.success(Unit)
             else Result.failure(Exception("保存表单配置失败"))
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 从插件代码中解析 @form 注释，提取表单字段定义
+     * 格式: @form {key: "xxx", title: "xxx", tooltip: "xxx", valueType: "text", required: true}
+     */
+    fun parseFormFromCode(code: String): List<PluginFormField> {
+        if (code.isBlank()) return emptyList()
+
+        return try {
+            val fields = mutableListOf<PluginFormField>()
+            // 匹配 @form {key: "xxx", title: "xxx", ...} 格式
+            val regex = """@\s*form\s*\{([^}]+)\}""".toRegex()
+            val matches = regex.findAll(code)
+
+            for (match in matches) {
+                val content = match.groupValues[1]
+                try {
+                    val field = parseFormField(content)
+                    if (field != null) {
+                        fields.add(field)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to parse @form: $content", e)
+                }
+            }
+            fields
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse form from code", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * 解析单个表单字段的属性
+     */
+    private fun parseFormField(content: String): PluginFormField? {
+        // 提取 key-value 对
+        val props = mutableMapOf<String, String>()
+        // 匹配 key: "value" 或 key: 'value' 或 key: value 格式
+        val propRegex = """(\w+)\s*:\s*(?:"([^"]*)"|'([^']*)'|(\w+))""".toRegex()
+        val propMatches = propRegex.findAll(content)
+
+        for (match in propMatches) {
+            val key = match.groupValues[1]
+            val value = match.groupValues[2].ifEmpty { match.groupValues[3].ifEmpty { match.groupValues[4] } }
+            props[key] = value
+        }
+
+        val key = props["key"] ?: return null
+        val title = props["title"] ?: key
+        val tooltip = props["tooltip"] ?: ""
+        val valueType = props["valueType"] ?: props["type"] ?: "text"
+        val required = props["required"]?.toBooleanStrictOrNull() ?: false
+        val defaultValue = props["default"] ?: ""
+
+        // 解析 options（用于 select 类型）
+        val options = mutableListOf<PluginFormOption>()
+        val optionsStr = props["options"]
+        if (optionsStr != null) {
+            // 格式: "option1,option2" 或 "option1:value1,option2:value2"
+            optionsStr.split(",").forEach { option ->
+                val parts = option.trim().split(":")
+                if (parts.size == 2) {
+                    options.add(PluginFormOption(label = parts[0].trim(), value = parts[1].trim()))
+                } else {
+                    val label = parts[0].trim()
+                    options.add(PluginFormOption(label = label, value = label))
+                }
+            }
+        }
+
+        return PluginFormField(
+            key = key,
+            label = title,
+            type = mapValueType(valueType),
+            value = defaultValue,
+            tooltip = tooltip,
+            required = required,
+            options = options,
+        )
+    }
+
+    /**
+     * 映射表单字段类型
+     */
+    private fun mapValueType(valueType: String): String {
+        return when (valueType.lowercase()) {
+            "switch", "boolean", "bool" -> "switch"
+            "number", "int", "integer", "float", "double" -> "number"
+            "select", "dropdown", "choice" -> "select"
+            "textarea", "text", "string" -> "text"
+            else -> "text"
+        }
+    }
+
+    /**
+     * 获取插件已配置的表单值
+     * 表单值存储在 plugin_form.{uuid} 中（JSON 字符串格式）
+     */
+    suspend fun getPluginFormValues(uuid: String): Result<Map<String, Any?>> {
+        return try {
+            val pluginId = uuid.asPluginId()
+            val keys = "plugin_form.$pluginId"
+            val response = RetrofitClient.api.getStorage(keys)
+            if (response.success) {
+                val data = response.data as? Map<*, *>
+                val jsonStr = data?.get(keys) as? String
+
+                val result = mutableMapOf<String, Any?>()
+                if (!jsonStr.isNullOrBlank()) {
+                    try {
+                        // 尝试解析 JSON 字符串为 Map
+                        val gson = com.google.gson.Gson()
+                        val jsonObj = gson.fromJson(jsonStr, com.google.gson.JsonObject::class.java)
+                        jsonObj?.entrySet()?.forEach { (key, value) ->
+                            result[key] = when {
+                                value.isJsonPrimitive -> {
+                                    val primitive = value.asJsonPrimitive
+                                    when {
+                                        primitive.isBoolean -> primitive.asBoolean
+                                        primitive.isNumber -> primitive.asNumber
+                                        else -> primitive.asString
+                                    }
+                                }
+                                value.isJsonNull -> null
+                                else -> value.toString()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to parse form JSON: $jsonStr", e)
+                    }
+                }
+                Log.d(TAG, "Loaded form values for $pluginId: $result")
+                Result.success(result)
+            } else {
+                Result.success(emptyMap())
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get form values", e)
+            Result.success(emptyMap())
+        }
+    }
+
+    /**
+     * 保存插件表单配置值
+     * 表单值存储在 plugin_form.{uuid} 中
+     */
+    suspend fun savePluginFormValues(uuid: String, values: Map<String, Any?>): Result<Unit> {
+        return try {
+            val pluginId = uuid.asPluginId()
+            // 将表单值转为 JSON 字符串存储
+            val jsonValue = try {
+                com.google.gson.Gson().toJson(values)
+            } catch (e: Exception) {
+                values.toString()
+            }
+            val body = mapOf("plugin_form.$pluginId" to jsonValue)
+            val response = RetrofitClient.api.saveStorage(pluginId, body)
+            if (response.success) {
+                Log.d(TAG, "Saved form values for $pluginId: $values")
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("保存表单配置失败"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save form values", e)
             Result.failure(e)
         }
     }

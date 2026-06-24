@@ -632,8 +632,8 @@ See [PLUGIN_MANAGEMENT.md](PLUGIN_MANAGEMENT.md) for detailed design documentati
 ### 🟡 Medium Priority
 | # | Issue | Location |
 |---|---|---|
-| 2 | **`AuthRepository.logout()` uses `runBlocking`** — blocks main thread from Compose | `AuthRepository.kt:54` |
-| 3 | **POST bodies use `Map<String, String>`** — not type-safe, should use data classes | `SillyGirlApi.kt` |
+| ~~2~~ | ~~**`AuthRepository.logout()` uses `runBlocking`** — blocks main thread from Compose~~ | ~~`AuthRepository.kt:54`~~ |
+| ~~3~~ | ~~**POST bodies use `Map<String, String>`** — not type-safe, should use data classes~~ | ~~`SillyGirlApi.kt`~~ |
 | 4 | **No unit tests** — no `src/test/` or `src/androidTest/` directories | — |
 | 5 | **`isMinifyEnabled = false`** — release build not shrunk | `build.gradle.kts:21` |
 | 6 | **`usesCleartextTraffic="true"`** — allows HTTP, should be HTTPS-only in production | `AndroidManifest.xml:13` |
@@ -659,3 +659,6 @@ See [PLUGIN_MANAGEMENT.md](PLUGIN_MANAGEMENT.md) for detailed design documentati
 | 18 | ~~Test server hardcoded~~ | Removed test auto-fill, credentials now user-provided |
 | 19 | ~~Token lost on app restart~~ | Added `RetrofitClient.setServer()` call on startup before token verification |
 | 20 | ~~Manual login required every time~~ | Auto-login with saved credentials after server selection |
+| 21 | ~~`runBlocking` blocks main thread~~ | Changed `logout()` to suspend function |
+| 22 | ~~POST bodies not type-safe~~ | Created 8 request data classes for all POST endpoints |
+| 23 | ~~Auto-select server on startup~~ | Modified launch flow to let user choose server when no valid token |

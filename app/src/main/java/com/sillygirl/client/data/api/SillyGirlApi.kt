@@ -8,7 +8,7 @@ interface SillyGirlApi {
     // ===== Auth =====
     @POST("api/login/account")
     @Headers("Content-Type: application/json")
-    suspend fun login(@Body body: Map<String, String>): LoginResponse
+    suspend fun login(@Body body: LoginRequest): LoginResponse
 
     @GET("api/currentUser")
     suspend fun getCurrentUser(): CurrentUserResponse
@@ -26,19 +26,19 @@ interface SillyGirlApi {
 
     @POST("api/plugins/run")
     @Headers("Content-Type: application/json")
-    suspend fun runPlugin(@Body body: Map<String, String>): ApiResponse<Any>
+    suspend fun runPlugin(@Body body: PluginRequest): ApiResponse<Any>
 
     @POST("api/plugins/stop")
     @Headers("Content-Type: application/json")
-    suspend fun stopPlugin(@Body body: Map<String, String>): ApiResponse<Any>
+    suspend fun stopPlugin(@Body body: PluginRequest): ApiResponse<Any>
 
     @POST("api/plugins/install")
     @Headers("Content-Type: application/json")
-    suspend fun installPlugin(@Body body: Map<String, String>): ApiResponse<Any>
+    suspend fun installPlugin(@Body body: PluginRequest): ApiResponse<Any>
 
     @POST("api/plugins/uninstall")
     @Headers("Content-Type: application/json")
-    suspend fun uninstallPlugin(@Body body: Map<String, String>): ApiResponse<Any>
+    suspend fun uninstallPlugin(@Body body: PluginRequest): ApiResponse<Any>
 
     // ===== Fenyong =====
     // GET /api/fenyong/dashboard — returns { success, today, yesterday, last7days, lastMonth, platforms, total_settled, total_unsettled, total_orders }
@@ -59,11 +59,11 @@ interface SillyGirlApi {
 
     @POST("api/master/add")
     @Headers("Content-Type: application/json")
-    suspend fun addMaster(@Body body: Map<String, String>): ApiResponse<Any>
+    suspend fun addMaster(@Body body: MasterAddRequest): ApiResponse<Any>
 
     @POST("api/master/del")
     @Headers("Content-Type: application/json")
-    suspend fun delMaster(@Body body: Map<String, String>): ApiResponse<Any>
+    suspend fun delMaster(@Body body: MasterDelRequest): ApiResponse<Any>
 
     // ===== Tasks =====
     @GET("api/tasks")
@@ -74,23 +74,23 @@ interface SillyGirlApi {
 
     @POST("api/tasks/add")
     @Headers("Content-Type: application/json")
-    suspend fun addTask(@Body body: Map<String, String>): ApiResponse<Any>
+    suspend fun addTask(@Body body: TaskAddRequest): ApiResponse<Any>
 
     @POST("api/tasks/edit")
     @Headers("Content-Type: application/json")
-    suspend fun editTask(@Body body: Map<String, String>): ApiResponse<Any>
+    suspend fun editTask(@Body body: TaskEditRequest): ApiResponse<Any>
 
     @POST("api/tasks/del")
     @Headers("Content-Type: application/json")
-    suspend fun delTask(@Body body: Map<String, Any>): ApiResponse<Any>
+    suspend fun delTask(@Body body: TaskActionRequest): ApiResponse<Any>
 
     @POST("api/tasks/setEnable")
     @Headers("Content-Type: application/json")
-    suspend fun setTaskEnable(@Body body: Map<String, Any>): ApiResponse<Any>
+    suspend fun setTaskEnable(@Body body: TaskSetEnableRequest): ApiResponse<Any>
 
     @POST("api/tasks/run")
     @Headers("Content-Type: application/json")
-    suspend fun runTask(@Body body: Map<String, String>): ApiResponse<Any>
+    suspend fun runTask(@Body body: TaskActionRequest): ApiResponse<Any>
 
     // ===== Storage =====
     @PUT("api/storage")

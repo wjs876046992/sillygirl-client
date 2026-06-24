@@ -14,12 +14,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sillygirl.client.data.api.RetrofitClient
+import com.sillygirl.client.data.model.TaskActionRequest
 import com.sillygirl.client.data.model.TaskInfo
+import com.sillygirl.client.data.model.TaskSetEnableRequest
 import com.sillygirl.client.data.repository.TaskRepository
 import com.sillygirl.client.ui.components.GlassCard
 import com.sillygirl.client.ui.theme.*
@@ -58,7 +59,7 @@ class TasksViewModel : ViewModel() {
 
     fun toggleTask(task: TaskInfo) { viewModelScope.launch {
         try {
-            RetrofitClient.api.setTaskEnable(mapOf("id" to task.id.toString(), "enable" to !task.enable))
+            RetrofitClient.api.setTaskEnable(TaskSetEnableRequest(id = task.id.toString(), enable = !task.enable))
             load()
             _ui.value = _ui.value.copy(snackbarMessage = if (task.enable) "已停止" else "已启动")
         } catch (e: Exception) {
@@ -68,7 +69,7 @@ class TasksViewModel : ViewModel() {
 
     fun deleteTask(task: TaskInfo) { viewModelScope.launch {
         try {
-            RetrofitClient.api.delTask(mapOf("id" to task.id.toString()))
+            RetrofitClient.api.delTask(TaskActionRequest(id = task.id.toString()))
             load()
             _ui.value = _ui.value.copy(snackbarMessage = "已删除")
         } catch (e: Exception) {
@@ -78,7 +79,7 @@ class TasksViewModel : ViewModel() {
 
     fun runTask(task: TaskInfo) { viewModelScope.launch {
         try {
-            RetrofitClient.api.runTask(mapOf("id" to task.id.toString()))
+            RetrofitClient.api.runTask(TaskActionRequest(id = task.id.toString()))
             _ui.value = _ui.value.copy(snackbarMessage = "任务已执行")
         } catch (e: Exception) {
             _ui.value = _ui.value.copy(error = "执行失败：${e.message}")
@@ -182,7 +183,7 @@ private fun TaskItemCard(task: TaskInfo, onToggle: () -> Unit, onRun: () -> Unit
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // 图标：有icon用AsyncImage，无icon用PlayArrow
                 Box(
-                    modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
+                    modifier = Modifier.size(40.dp).themeShadow(4.dp, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (hasIcon) {

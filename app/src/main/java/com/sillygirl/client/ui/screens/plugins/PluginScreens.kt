@@ -5,9 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -17,11 +19,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -234,7 +244,7 @@ private fun MyPluginCard(plugin: PluginRoute, onClick: () -> Unit) {
             // 图标 + 运行状态指示点
             Box(modifier = Modifier.size(44.dp)) {
                 Box(
-                    modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
+                    modifier = Modifier.size(40.dp).themeShadow(4.dp, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     when {
@@ -300,19 +310,37 @@ private fun MyPluginCard(plugin: PluginRoute, onClick: () -> Unit) {
                     Spacer(Modifier.height(2.dp))
                 }
 
-                // 底部信息行：版本 + 作者 + 分类标签
+                // 底部信息行：版本 + 作者 + origin + 分类标签
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(plugin.version, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("·", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        plugin.author.ifBlank { plugin.origin.ifBlank { "未知" } },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
+                    if (plugin.author.isNotBlank()) {
+                        Text("·", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            plugin.author,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                    if (plugin.origin.isNotBlank()) {
+                        Text("·", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                        ) {
+                            Text(
+                                plugin.origin,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                fontSize = 9.sp,
+                                maxLines = 1,
+                            )
+                        }
+                    }
                     if (plugin.classes.isNotEmpty()) {
                         Text("·", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
@@ -355,7 +383,7 @@ private fun MarketPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo,
     GlassCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
+                modifier = Modifier.size(40.dp).themeShadow(4.dp, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 when {
@@ -555,7 +583,7 @@ private fun PluginInfoCard(
             // 头部：图标 + 标题 + 运行状态
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier.size(48.dp).shadow(4.dp, RoundedCornerShape(12.dp)),
+                    modifier = Modifier.size(48.dp).themeShadow(4.dp, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     when {
@@ -725,29 +753,67 @@ private fun PluginFormCard(
     }
 
     GlassCard {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("插件配置", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            // 标题行
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("插件配置", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                Text(
+                    "${fields.size} 个配置项",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             fields.forEach { field ->
-                when (field.type) {
-                    "switch" -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(field.label, style = MaterialTheme.typography.bodyMedium)
-                            Switch(
-                                checked = formData[field.key] as? Boolean ?: false,
-                                onCheckedChange = { newValue ->
-                                    formData = formData.toMutableMap().apply { put(field.key, newValue) }
-                                }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // 标题行（包含必填标记）
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            field.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        if (field.required) {
+                            Text(
+                                " *",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.error,
                             )
                         }
                     }
-                    "select" -> {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(field.label, style = MaterialTheme.typography.labelMedium)
+
+                    // 提示信息
+                    if (field.tooltip.isNotBlank()) {
+                        Text(
+                            field.tooltip,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    when (field.type) {
+                        "switch" -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (field.tooltip.isBlank()) {
+                                    Text(field.label, style = MaterialTheme.typography.bodyMedium)
+                                }
+                                Switch(
+                                    checked = formData[field.key] as? Boolean ?: false,
+                                    onCheckedChange = { newValue ->
+                                        formData = formData.toMutableMap().apply { put(field.key, newValue) }
+                                    }
+                                )
+                            }
+                        }
+                        "select" -> {
                             var expanded by remember { mutableStateOf(false) }
                             ExposedDropdownMenuBox(
                                 expanded = expanded,
@@ -777,10 +843,7 @@ private fun PluginFormCard(
                                 }
                             }
                         }
-                    }
-                    "number" -> {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(field.label, style = MaterialTheme.typography.labelMedium)
+                        "number" -> {
                             OutlinedTextField(
                                 value = formData[field.key]?.toString() ?: "",
                                 onValueChange = { newValue ->
@@ -789,12 +852,10 @@ private fun PluginFormCard(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(8.dp),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                placeholder = { Text("请输入数字", style = MaterialTheme.typography.bodySmall) },
                             )
                         }
-                    }
-                    else -> {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(field.label, style = MaterialTheme.typography.labelMedium)
+                        else -> {
                             OutlinedTextField(
                                 value = formData[field.key]?.toString() ?: "",
                                 onValueChange = { newValue ->
@@ -802,11 +863,14 @@ private fun PluginFormCard(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(8.dp),
+                                placeholder = { Text("请输入${field.label}", style = MaterialTheme.typography.bodySmall) },
                             )
                         }
                     }
                 }
             }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
 
             Button(
                 onClick = { onSave(formData) },
@@ -817,6 +881,8 @@ private fun PluginFormCard(
                 if (isSaving) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
                 } else {
+                    Icon(Icons.Filled.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text("保存配置")
                 }
             }
@@ -842,12 +908,11 @@ private fun PluginEditorCard(
                 Text("${content.length} 字符", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            OutlinedTextField(
-                value = content,
-                onValueChange = onContentChange,
+            // 代码高亮编辑器
+            CodeEditor(
+                code = content,
+                onCodeChange = onContentChange,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp, max = 400.dp),
-                shape = RoundedCornerShape(12.dp),
-                textStyle = MaterialTheme.typography.bodySmall,
             )
 
             Button(
@@ -861,6 +926,191 @@ private fun PluginEditorCard(
                 } else {
                     Text("保存代码")
                 }
+            }
+        }
+    }
+}
+
+/**
+ * 简单的代码编辑器，支持 JavaScript 语法高亮
+ */
+@Composable
+private fun CodeEditor(
+    code: String,
+    onCodeChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val syntaxColors = remember { SyntaxColors() }
+
+    OutlinedTextField(
+        value = code,
+        onValueChange = onCodeChange,
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        textStyle = MaterialTheme.typography.bodySmall.copy(
+            fontFamily = FontFamily.Monospace,
+            fontSize = 13.sp,
+        ),
+        visualTransformation = JavaScriptHighlightTransformation(syntaxColors),
+    )
+}
+
+/**
+ * JavaScript 语法高亮颜色配置
+ */
+private class SyntaxColors(
+    val keyword: Color = Color(0xFFC678DD),      // 紫色 - 关键字
+    val string: Color = Color(0xFF98C379),         // 绿色 - 字符串
+    val comment: Color = Color(0xFF5C6370),        // 灰色 - 注释
+    val number: Color = Color(0xFFD19A66),         // 橙色 - 数字
+    val function: Color = Color(0xFF61AFEF),       // 蓝色 - 函数
+    val operator: Color = Color(0xFF56B6C2),       // 青色 - 运算符
+    val punctuation: Color = Color(0xFFABB2BF),    // 浅灰 - 标点
+    val property: Color = Color(0xFFE06C75),       // 红色 - 属性名
+)
+
+/**
+ * JavaScript 语法高亮转换器
+ */
+private class JavaScriptHighlightTransformation(
+    private val colors: SyntaxColors,
+) : VisualTransformation {
+
+    // JavaScript 关键字
+    private val keywords = setOf(
+        "async", "await", "break", "case", "catch", "class", "const",
+        "continue", "debugger", "default", "delete", "do", "else",
+        "export", "extends", "finally", "for", "from", "function",
+        "get", "if", "import", "in", "instanceof", "let", "new",
+        "of", "return", "set", "static", "super", "switch", "this",
+        "throw", "try", "typeof", "var", "void", "while", "with", "yield"
+    )
+
+    // 内置对象和方法
+    private val builtins = setOf(
+        "console", "document", "window", "Math", "JSON", "Promise",
+        "Array", "Object", "String", "Number", "Boolean", "Date",
+        "RegExp", "Error", "setTimeout", "setInterval", "clearTimeout",
+        "clearInterval", "parseInt", "parseFloat", "isNaN", "undefined",
+        "null", "true", "false", "NaN", "Infinity"
+    )
+
+    override fun filter(text: AnnotatedString): TransformedText {
+        val annotatedString = highlightJavaScript(text.text)
+        return TransformedText(annotatedString, OffsetMapping.Identity)
+    }
+
+    private fun highlightJavaScript(code: String): AnnotatedString {
+        return buildAnnotatedString {
+            var i = 0
+            while (i < code.length) {
+                val c = code[i]
+
+                // 单行注释 //
+                if (c == '/' && i + 1 < code.length && code[i + 1] == '/') {
+                    val start = i
+                    while (i < code.length && code[i] != '\n') i++
+                    withStyle(SpanStyle(color = colors.comment, fontStyle = FontStyle.Italic)) {
+                        append(code.substring(start, i))
+                    }
+                    continue
+                }
+
+                // 多行注释 /* */
+                if (c == '/' && i + 1 < code.length && code[i + 1] == '*') {
+                    val start = i
+                    i += 2
+                    while (i < code.length - 1 && !(code[i] == '*' && code[i + 1] == '/')) i++
+                    i += 2 // skip */
+                    withStyle(SpanStyle(color = colors.comment, fontStyle = FontStyle.Italic)) {
+                        append(code.substring(start, i))
+                    }
+                    continue
+                }
+
+                // 字符串 (单引号、双引号、反引号)
+                if (c == '\'' || c == '"' || c == '`') {
+                    val quote = c
+                    val start = i
+                    i++
+                    while (i < code.length && code[i] != quote) {
+                        if (code[i] == '\\') i++ // 跳过转义字符
+                        i++
+                    }
+                    if (i < code.length) i++ // 跳过结束引号
+                    withStyle(SpanStyle(color = colors.string)) {
+                        append(code.substring(start, i))
+                    }
+                    continue
+                }
+
+                // 数字
+                if (c.isDigit()) {
+                    val start = i
+                    while (i < code.length && (code[i].isDigit() || code[i] == '.')) i++
+                    withStyle(SpanStyle(color = colors.number)) {
+                        append(code.substring(start, i))
+                    }
+                    continue
+                }
+
+                // 标识符 (关键字、内置对象、函数名)
+                if (c.isLetter() || c == '_' || c == '$') {
+                    val start = i
+                    while (i < code.length && (code[i].isLetterOrDigit() || code[i] == '_' || code[i] == '$')) i++
+                    val word = code.substring(start, i)
+
+                    when {
+                        word in keywords -> {
+                            withStyle(SpanStyle(color = colors.keyword, fontWeight = FontWeight.Medium)) {
+                                append(word)
+                            }
+                        }
+                        word in builtins -> {
+                            withStyle(SpanStyle(color = colors.keyword)) {
+                                append(word)
+                            }
+                        }
+                        // 检查是否是函数调用 (后面跟着括号)
+                        i < code.length && code[i] == '(' -> {
+                            withStyle(SpanStyle(color = colors.function)) {
+                                append(word)
+                            }
+                        }
+                        // 检查是否是对象属性 (前面是点号)
+                        start > 0 && code[start - 1] == '.' -> {
+                            withStyle(SpanStyle(color = colors.property)) {
+                                append(word)
+                            }
+                        }
+                        else -> {
+                            append(word)
+                        }
+                    }
+                    continue
+                }
+
+                // 运算符
+                if (c in "+-*/%=!<>&|^~?:") {
+                    withStyle(SpanStyle(color = colors.operator)) {
+                        append(c)
+                    }
+                    i++
+                    continue
+                }
+
+                // 标点符号
+                if (c in "(){}[];,.") {
+                    withStyle(SpanStyle(color = colors.punctuation)) {
+                        append(c)
+                    }
+                    i++
+                    continue
+                }
+
+                // 其他字符
+                append(c)
+                i++
             }
         }
     }

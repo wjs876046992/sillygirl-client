@@ -4,9 +4,14 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 // ===== 品牌配色 =====
 val Purple40 = Color(0xFF6750A4)
@@ -92,4 +97,27 @@ fun SillyGirlTheme(
         ),
         content = content
     )
+}
+
+/**
+ * 主题感知的阴影修饰符。
+ * 亮色模式下使用柔和的灰色阴影，暗色模式下使用默认阴影。
+ * 避免亮色模式下出现明显的黑色阴影。
+ */
+@Composable
+fun Modifier.themeShadow(
+    elevation: Dp,
+    shape: Shape,
+): Modifier {
+    val isDark = isSystemInDarkTheme()
+    return if (isDark) {
+        this.shadow(elevation = elevation, shape = shape)
+    } else {
+        this.shadow(
+            elevation = elevation,
+            shape = shape,
+            ambientColor = Color(0x0D000000),
+            spotColor = Color(0x1A000000),
+        )
+    }
 }

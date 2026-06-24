@@ -10,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sillygirl.client.data.api.RetrofitClient
@@ -24,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sillygirl.client.ui.components.MiniAppBar
+import com.sillygirl.client.ui.theme.themeShadow
 
 data class StorageUiState(
     val isLoading: Boolean = false,
@@ -170,7 +170,7 @@ fun StorageScreen(
 
             if (ui.selectedValue != null) {
                 Card(
-                    modifier = Modifier.fillMaxWidth().shadow(6.dp, RoundedCornerShape(16.dp)),
+                    modifier = Modifier.fillMaxWidth().themeShadow(6.dp, RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 ) {

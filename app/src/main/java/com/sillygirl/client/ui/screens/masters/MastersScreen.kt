@@ -11,7 +11,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -19,10 +18,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import com.sillygirl.client.data.api.RetrofitClient
+import com.sillygirl.client.data.model.MasterAddRequest
+import com.sillygirl.client.data.model.MasterDelRequest
 import com.sillygirl.client.data.model.MasterInfo
 import com.sillygirl.client.data.repository.MasterRepository
 import com.sillygirl.client.ui.components.GlassCard
 import com.sillygirl.client.ui.theme.DangerColor
+import com.sillygirl.client.ui.theme.themeShadow
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,7 +59,7 @@ class MastersViewModel : ViewModel() {
     fun removeMaster(master: MasterInfo) {
         viewModelScope.launch {
             try {
-                RetrofitClient.api.delMaster(mapOf("id" to "${master.id}"))
+                RetrofitClient.api.delMaster(MasterDelRequest(id = "${master.id}"))
                 load()
                 _ui.value = _ui.value.copy(snackbarMessage = "已移除管理员")
             } catch (e: Exception) {
@@ -155,7 +157,7 @@ private fun MasterCard(master: MasterInfo, onRemove: () -> Unit) {
     GlassCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(40.dp).shadow(4.dp, RoundedCornerShape(10.dp)),
+                modifier = Modifier.size(40.dp).themeShadow(4.dp, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -200,7 +202,7 @@ private fun AddMasterDialog(onDismiss: () -> Unit, onAdded: () -> Unit) {
                     loading = true
                     scope.launch {
                         try {
-                            RetrofitClient.api.addMaster(mapOf("platform" to platform, "number" to number))
+                            RetrofitClient.api.addMaster(MasterAddRequest(platform = platform, number = number))
                             onAdded()
                         } catch (_: Exception) { loading = false }
                     }

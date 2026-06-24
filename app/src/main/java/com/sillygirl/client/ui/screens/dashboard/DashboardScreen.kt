@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -99,7 +98,7 @@ fun DashboardScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(4.dp, RoundedCornerShape(12.dp))
+                            .themeShadow(4.dp, RoundedCornerShape(12.dp))
                             .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(12.dp)),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -139,7 +138,7 @@ private fun WelcomeHeader(name: String) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(8.dp, RoundedCornerShape(16.dp)),
+            .themeShadow(8.dp, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
@@ -196,7 +195,7 @@ private fun MetricGridCard(
 ) {
     Surface(
         modifier = modifier
-            .shadow(4.dp, RoundedCornerShape(14.dp))
+            .themeShadow(4.dp, RoundedCornerShape(14.dp))
             .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick),
         color = MaterialTheme.colorScheme.surface,
@@ -347,7 +346,7 @@ private fun FeatureCard(
 ) {
     Surface(
         modifier = modifier
-            .shadow(4.dp, RoundedCornerShape(14.dp))
+            .themeShadow(4.dp, RoundedCornerShape(14.dp))
             .clip(RoundedCornerShape(14.dp))
             .background(Color.White.copy(alpha = 0.02f), RoundedCornerShape(14.dp))
             .clickable(onClick = item.onClick),
