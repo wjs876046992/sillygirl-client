@@ -52,7 +52,6 @@ fun MyPluginsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var searchQuery by remember { mutableStateOf("") }
-    var selectedOrigins by remember { mutableStateOf(setOf<String>()) }
     var selectedClasses by remember { mutableStateOf(setOf<String>()) }
     var showUninstallDialog by remember { mutableStateOf<PluginRoute?>(null) }
     var showReloadDialog by remember { mutableStateOf<PluginRoute?>(null) }
@@ -115,25 +114,21 @@ fun MyPluginsScreen(
         )
     }
 
-    // 收集所有 origins 和 classes
-    val allOrigins = remember(uiState.plugins) {
-        uiState.plugins.map { it.origin }.filter { it.isNotBlank() }.distinct().sorted()
-    }
+    // 收集所有 classes
     val allClasses = remember(uiState.plugins) {
         uiState.plugins.flatMap { it.classes }.distinct().sorted()
     }
 
     // 过滤插件
-    val filteredPlugins = remember(uiState.plugins, searchQuery, selectedOrigins, selectedClasses) {
+    val filteredPlugins = remember(uiState.plugins, searchQuery, selectedClasses) {
         uiState.plugins.filter { plugin ->
             val matchesSearch = searchQuery.isBlank() ||
                 plugin.title.contains(searchQuery, ignoreCase = true) ||
                 plugin.name.contains(searchQuery, ignoreCase = true) ||
                 plugin.description.contains(searchQuery, ignoreCase = true) ||
                 plugin.author.contains(searchQuery, ignoreCase = true)
-            val matchesOrigin = selectedOrigins.isEmpty() || plugin.origin in selectedOrigins
             val matchesClass = selectedClasses.isEmpty() || plugin.classes.any { it in selectedClasses }
-            matchesSearch && matchesOrigin && matchesClass
+            matchesSearch && matchesClass
         }
     }
 
@@ -182,40 +177,6 @@ fun MyPluginsScreen(
                                 shape = RoundedCornerShape(12.dp),
                                 singleLine = true,
                             )
-                        }
-
-                        // Origins 筛选（多选）
-                        if (allOrigins.isNotEmpty()) {
-                            item {
-                                Column {
-                                    Text(
-                                        "来源筛选",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Medium,
-                                    )
-                                    Spacer(Modifier.height(8.dp))
-                                    FlowRow(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        allOrigins.forEach { origin ->
-                                            val isSelected = origin in selectedOrigins
-                                            FilterChip(
-                                                selected = isSelected,
-                                                onClick = {
-                                                    selectedOrigins = if (isSelected) {
-                                                        selectedOrigins - origin
-                                                    } else {
-                                                        selectedOrigins + origin
-                                                    }
-                                                },
-                                                label = { Text(origin) },
-                                                shape = RoundedCornerShape(20.dp),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
                         }
 
                         // Classes 筛选（多选）
