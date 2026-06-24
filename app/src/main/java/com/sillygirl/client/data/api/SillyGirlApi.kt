@@ -22,6 +22,9 @@ interface SillyGirlApi {
         @Query("current") current: Int = 1,
         @Query("pageSize") pageSize: Int = 100,
         @Query("activeKey") activeKey: String = "tab1",
+        @Query("class") classFilter: String? = null,
+        @Query("origin[]") origins: List<String>? = null,
+        @Query("keyword") keyword: String? = null,
     ): PluginListResponse
 
     @POST("api/plugins/run")
@@ -88,15 +91,14 @@ interface SillyGirlApi {
     @Headers("Content-Type: application/json")
     suspend fun setTaskEnable(@Body body: TaskSetEnableRequest): ApiResponse<Any>
 
-    @POST("api/tasks/run")
-    @Headers("Content-Type: application/json")
-    suspend fun runTask(@Body body: TaskActionRequest): ApiResponse<Any>
+    @GET("api/tasks/run")
+    suspend fun runTask(@Query("task_id") taskId: String): ApiResponse<Any>
 
     // ===== Storage =====
     @PUT("api/storage")
     @Headers("Content-Type: application/json")
     suspend fun saveStorage(
-        @Query("uuid") uuid: String,
+        @Query("uuid") uuid: String? = null,
         @Body body: Map<String, String>,
     ): ApiResponse<Any>
 
@@ -104,4 +106,9 @@ interface SillyGirlApi {
     suspend fun getStorage(
         @Query("keys") keys: String,
     ): ApiResponse<Any>
+
+    @GET("api/storage")
+    suspend fun searchStorage(
+        @Query("search") search: String,
+    ): ApiResponse<List<StorageBucket>>
 }

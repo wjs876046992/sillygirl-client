@@ -79,7 +79,7 @@ class TasksViewModel : ViewModel() {
 
     fun runTask(task: TaskInfo) { viewModelScope.launch {
         try {
-            RetrofitClient.api.runTask(TaskActionRequest(id = task.id.toString()))
+            RetrofitClient.api.runTask(task.taskId.ifBlank { task.id.toString() })
             _ui.value = _ui.value.copy(snackbarMessage = "任务已执行")
         } catch (e: Exception) {
             _ui.value = _ui.value.copy(error = "执行失败：${e.message}")

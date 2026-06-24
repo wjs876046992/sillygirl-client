@@ -243,6 +243,23 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
+                    // 平台标签
+                    if (order.site.isNotBlank()) {
+                        val siteColor = getPlatformColor(order.site)
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = siteColor.copy(alpha = 0.12f),
+                        ) {
+                            Text(
+                                getPlatformName(order.site),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = siteColor,
+                            )
+                        }
+                    }
+                    // 状态标签
                     if (order.status.isNotBlank()) {
                         val sc = getStatusColor(order.status)
                         Surface(

@@ -1,10 +1,12 @@
 package com.sillygirl.client.data.api
 
+import android.util.Log
 import com.google.gson.GsonBuilder
 import okhttp3.Interceptor
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import okio.Buffer
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.net.CookieManager
@@ -12,6 +14,8 @@ import java.net.CookiePolicy
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
+    private const val TAG = "SillyGirlAPI"
+
     var token: String? = null
     private var _api: SillyGirlApi? = null
     private var _currentServer: String = ""
@@ -43,6 +47,7 @@ object RetrofitClient {
         setCookiePolicy(CookiePolicy.ACCEPT_ALL)
     }
 
+    /** 请求拦截器 — 添加 token 和日志 */
     private val authInterceptor = Interceptor { chain ->
         val request = chain.request()
         val newRequest = if (token != null) {
@@ -52,12 +57,44 @@ object RetrofitClient {
         } else {
             request
         }
+
+        // 打印请求信息
+        val url = newRequest.url
+        val method = newRequest.method
+        val body = newRequest.body
+        Log.d(TAG, "═══════════════════════════════════════════")
+        Log.d(TAG, "▶ REQUEST: $method $url")
+        if (body != null) {
+            try {
+                val buffer = Buffer()
+                body.writeTo(buffer)
+                val bodyStr = buffer.readUtf8()
+                Log.d(TAG, "▶ BODY: $bodyStr")
+            } catch (e: Exception) {
+                Log.d(TAG, "▶ BODY: (无法读取)")
+            }
+        }
+        Log.d(TAG, "▶ HEADERS: ${newRequest.headers}")
+
         chain.proceed(newRequest)
     }
 
-    /** 响应拦截器 — 检测会话过期 */
+    /** 响应拦截器 — 检测会话过期 + 打印响应 */
     private val sessionInterceptor = Interceptor { chain ->
         val response = chain.proceed(chain.request())
+
+        // 打印响应信息
+        val url = response.request.url
+        val code = response.code
+        Log.d(TAG, "◀ RESPONSE: $code $url")
+        try {
+            val bodyStr = response.peekBody(1024 * 1024).string() // 最多读取 1MB
+            Log.d(TAG, "◀ BODY: $bodyStr")
+        } catch (e: Exception) {
+            Log.d(TAG, "◀ BODY: (无法读取)")
+        }
+        Log.d(TAG, "═══════════════════════════════════════════")
+
         // 后端 401 或返回 success=false 且消息含"未授权"或"登录"时触发
         if (response.code == 401 || response.code == 403) {
             token = null
@@ -67,7 +104,7 @@ object RetrofitClient {
     }
 
     private val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BASIC
+        level = HttpLoggingInterceptor.Level.NONE // 禁用内置日志，使用自定义日志
     }
 
     private val okHttpClient: OkHttpClient

@@ -13,21 +13,82 @@ class PluginRepository {
     /** 统一将 path（如 /script/uuid）转为纯 UUID */
     private fun String.asPluginId(): String = removePrefix("/script/")
 
-    suspend fun getInstalledPlugins(): Result<List<PluginInfo>> {
+    /**
+     * 获取已安装插件列表（分页）
+     * @param page 页码（从1开始）
+     * @param pageSize 每页数量
+     * @param classFilter 分类筛选（单选，null=全部）
+     * @param origins 来源筛选（多选，null=全部）
+     * @param keyword 搜索关键词
+     */
+    suspend fun getInstalledPlugins(
+        page: Int = 1,
+        pageSize: Int = 20,
+        classFilter: String? = null,
+        origins: List<String>? = null,
+        keyword: String? = null,
+    ): Result<PluginListResult> {
         return try {
-            val response = RetrofitClient.api.getPluginList(activeKey = "tab1")
-            if (response.success) Result.success(response.data)
-            else Result.failure(Exception("获取插件列表失败"))
+            val response = RetrofitClient.api.getPluginList(
+                current = page,
+                pageSize = pageSize,
+                activeKey = "tab1",
+                classFilter = classFilter,
+                origins = origins,
+                keyword = keyword,
+            )
+            if (response.success) {
+                Result.success(PluginListResult(
+                    plugins = response.data,
+                    total = response.total,
+                    page = response.page,
+                    pageSize = pageSize,
+                    classes = response.classes,
+                    origins = response.origins,
+                ))
+            } else {
+                Result.failure(Exception("获取插件列表失败"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    suspend fun getAvailablePlugins(): Result<List<PluginInfo>> {
+    /**
+     * 获取可用插件列表（分页）
+     * @param page 页码（从1开始）
+     * @param pageSize 每页数量
+     * @param activeKey tab 标识（tab1=已安装, tab2=未安装, tab3=可升级）
+     * @param keyword 搜索关键词
+     */
+    suspend fun getAvailablePlugins(
+        page: Int = 1,
+        pageSize: Int = 20,
+        activeKey: String = "tab2",
+        keyword: String? = null,
+    ): Result<PluginListResult> {
         return try {
-            val response = RetrofitClient.api.getPluginList(activeKey = "tab2")
-            if (response.success) Result.success(response.data)
-            else Result.failure(Exception("获取可用插件失败"))
+            val response = RetrofitClient.api.getPluginList(
+                current = page,
+                pageSize = pageSize,
+                activeKey = activeKey,
+                keyword = keyword,
+            )
+            if (response.success) {
+                Result.success(PluginListResult(
+                    plugins = response.data,
+                    total = response.total,
+                    page = response.page,
+                    pageSize = pageSize,
+                    tab1 = response.tab1,
+                    tab2 = response.tab2,
+                    tab3 = response.tab3,
+                    classes = response.classes,
+                    origins = response.origins,
+                ))
+            } else {
+                Result.failure(Exception("获取可用插件失败"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -133,7 +194,10 @@ class PluginRepository {
     suspend fun uninstallPlugin(uuid: String): Result<Unit> {
         return try {
             val pluginId = uuid.asPluginId()
-            val response = RetrofitClient.api.uninstallPlugin(PluginRequest(name = pluginId))
+            // 卸载时不传 uuid 参数，避免后端触发 deferred reload 导致插件被重新创建
+            // 与 web 端行为一致：web 端卸载也不传 uuid 参数
+            val body = mapOf("plugins.$pluginId" to "uninstall")
+            val response = RetrofitClient.api.saveStorage(body = body)
             if (response.success) Result.success(Unit)
             else Result.failure(Exception("卸载插件失败"))
         } catch (e: Exception) {

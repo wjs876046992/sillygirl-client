@@ -3,6 +3,7 @@ package com.sillygirl.client.ui.screens.dashboard
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +19,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,6 +29,7 @@ import com.sillygirl.client.data.model.UserData
 import com.sillygirl.client.ui.components.*
 import com.sillygirl.client.ui.theme.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     currentUser: UserData? = null,
@@ -37,94 +40,163 @@ fun DashboardScreen(
     onNavigateToTasks: () -> Unit = {},
     onNavigateToService: () -> Unit = {},
     onNavigateToStorage: () -> Unit = {},
+    onRefreshReady: ((() -> Unit) -> Unit)? = null,
     viewModel: DashboardViewModel = viewModel(),
 ) {
+    // 将刷新回调暴露给外部（顶部栏刷新按钮）
+    LaunchedEffect(Unit) {
+        onRefreshReady?.invoke { viewModel.loadDashboard(forceRefresh = true) }
+    }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val name = currentUser?.name ?: uiState.userName
     val installedPlugins = currentUser?.plugins?.size ?: uiState.installedPlugins
 
-    if (uiState.isLoading) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+    // 下拉刷新状态
+    var isRefreshing by remember { mutableStateOf(false) }
+    var pullDistance by remember { mutableFloatStateOf(0f) }
+    val refreshThreshold = 150f
+
+    // 监听加载状态变化，结束刷新动画
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading && isRefreshing) {
+            isRefreshing = false
+            pullDistance = 0f
         }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item { WelcomeHeader(name = name) }
+    }
 
-            item {
-                FenyongOverviewCard(uiState.fenyongDashboard, onNavigateToFenyong)
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (uiState.isLoading && !isRefreshing) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
-
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    MetricGridCard(
-                        icon = Icons.Filled.Extension,
-                        value = "$installedPlugins",
-                        color = Color(0xFF667EEA),
-                        modifier = Modifier.weight(1f),
-                        onClick = onNavigateToMyPlugins,
-                    )
-                    MetricGridCard(
-                        icon = Icons.Filled.People,
-                        value = "${uiState.masterCount}",
-                        color = Color(0xFF52C41A),
-                        modifier = Modifier.weight(1f),
-                        onClick = onNavigateToMasters,
-                    )
-                    MetricGridCard(
-                        icon = Icons.Filled.Schedule,
-                        value = "${uiState.activeTaskCount}",
-                        color = Color(0xFFF59E0B),
-                        modifier = Modifier.weight(1f),
-                        onClick = onNavigateToTasks,
-                    )
-                }
-            }
-
-            item {
-                FeatureGrid(
-                    onNavigateToPluginMarket,
-                    onNavigateToStorage,
-                    onNavigateToService,
-                )
-            }
-
-            if (uiState.error != null) {
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .themeShadow(4.dp, RoundedCornerShape(12.dp))
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(12.dp)),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragEnd = {
+                                if (pullDistance > refreshThreshold && !isRefreshing) {
+                                    isRefreshing = true
+                                    viewModel.loadDashboard(forceRefresh = true)
+                                }
+                                pullDistance = 0f
+                            },
+                            onVerticalDrag = { change, dragAmount ->
+                                if (dragAmount > 0 && !isRefreshing) {
+                                    pullDistance = (pullDistance + dragAmount).coerceAtMost(200f)
+                                }
+                            }
+                        )
+                    },
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                // 下拉刷新指示器
+                if (pullDistance > 0 || isRefreshing) {
+                    item {
                         Box(
                             modifier = Modifier
-                                .padding(14.dp)
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f)),
+                                .fillMaxWidth()
+                                .height((pullDistance * 0.5f).coerceAtMost(60f).dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(
-                                Icons.Filled.Error,
-                                null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.error,
+                            if (isRefreshing) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            } else if (pullDistance > refreshThreshold) {
+                                Icon(
+                                    Icons.Filled.Refresh,
+                                    contentDescription = "释放刷新",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Filled.ArrowDownward,
+                                    contentDescription = "下拉刷新",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .rotate((pullDistance / refreshThreshold * 180f).coerceAtMost(180f)),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                item { WelcomeHeader(name = name) }
+
+                item {
+                    FenyongOverviewCard(uiState.fenyongDashboard, onNavigateToFenyong)
+                }
+
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        MetricGridCard(
+                            icon = Icons.Filled.Extension,
+                            value = "$installedPlugins",
+                            color = Color(0xFF667EEA),
+                            modifier = Modifier.weight(1f),
+                            onClick = onNavigateToMyPlugins,
+                        )
+                        MetricGridCard(
+                            icon = Icons.Filled.People,
+                            value = "${uiState.masterCount}",
+                            color = Color(0xFF52C41A),
+                            modifier = Modifier.weight(1f),
+                            onClick = onNavigateToMasters,
+                        )
+                        MetricGridCard(
+                            icon = Icons.Filled.Schedule,
+                            value = "${uiState.activeTaskCount}",
+                            color = Color(0xFFF59E0B),
+                            modifier = Modifier.weight(1f),
+                            onClick = onNavigateToTasks,
+                        )
+                    }
+                }
+
+                item {
+                    FeatureGrid(
+                        onNavigateToPluginMarket,
+                        onNavigateToStorage,
+                        onNavigateToService,
+                    )
+                }
+
+                if (uiState.error != null) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .themeShadow(4.dp, RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(12.dp)),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(14.dp)
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    Icons.Filled.Error,
+                                    null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                            Text(
+                                uiState.error!!,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(vertical = 14.dp),
                             )
                         }
-                        Text(
-                            uiState.error!!,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(vertical = 14.dp),
-                        )
                     }
                 }
             }

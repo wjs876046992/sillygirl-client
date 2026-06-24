@@ -79,7 +79,32 @@ data class PluginListResponse(
     val data: List<PluginInfo> = emptyList(),
     val total: Int = 0,
     val page: Int = 1,
+    val tab1: Int = 0,
+    val tab2: Int = 0,
+    val tab3: Int = 0,
+    val tab: String = "",
+    val classes: Map<String, Int> = emptyMap(),
+    val origins: Map<String, String> = emptyMap(),
 )
+
+/**
+ * 插件列表分页结果
+ */
+data class PluginListResult(
+    val plugins: List<PluginInfo> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val pageSize: Int = 20,
+    val tab1: Int = 0,
+    val tab2: Int = 0,
+    val tab3: Int = 0,
+    val classes: Map<String, Int> = emptyMap(),
+    val origins: Map<String, String> = emptyMap(),
+) {
+    val totalPages: Int get() = if (total > 0) (total + pageSize - 1) / pageSize else 1
+    val hasNextPage: Boolean get() = page < totalPages
+    val hasPrevPage: Boolean get() = page > 1
+}
 
 data class PluginInfo(
     val id: String = "",
@@ -87,13 +112,28 @@ data class PluginInfo(
     val description: String = "",
     val version: String = "",
     val author: String = "",
+    val origin: String = "",
+    val organization: String = "",
+    val identified: Boolean = false,
     val running: Boolean = false,
     val disable: Boolean = false,
+    val status: Int = 0, // 0=未安装, 1=可升级, 2=已安装, 6=原创
     val classes: List<String> = emptyList(),
     val downloads: Int = 0,
     val icon: String = "",
     val debug: Boolean = false,
     @SerializedName("has_form") val hasForm: Boolean = false,
+    val encrypt: Boolean = false,
+    val module: Boolean = false,
+    val messages: List<PluginMessage> = emptyList(),
+    @SerializedName("create_at") val createAt: String = "",
+)
+
+data class PluginMessage(
+    val unix: Long = 0,
+    @SerializedName("class") val messageClass: String = "", // "warn" or "error"
+    val version: String = "",
+    val content: String = "",
 )
 
 // ===== Fenyong =====
@@ -346,4 +386,14 @@ data class TaskActionRequest(
 data class TaskSetEnableRequest(
     val id: String,
     val enable: Boolean,
+)
+
+// ===== Storage =====
+
+/**
+ * Storage bucket 搜索结果
+ */
+data class StorageBucket(
+    val text: String = "",
+    val value: String = "",
 )
