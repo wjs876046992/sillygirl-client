@@ -55,6 +55,7 @@ fun MyPluginsScreen(
     var selectedOrigins by remember { mutableStateOf(setOf<String>()) }
     var selectedClasses by remember { mutableStateOf(setOf<String>()) }
     var showUninstallDialog by remember { mutableStateOf<PluginRoute?>(null) }
+    var showReloadDialog by remember { mutableStateOf<PluginRoute?>(null) }
 
     // 初始加载
     LaunchedEffect(Unit) {
@@ -87,6 +88,29 @@ fun MyPluginsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showUninstallDialog = null }) { Text("取消") }
+            },
+        )
+    }
+
+    // 重载确认对话框
+    showReloadDialog?.let { plugin ->
+        AlertDialog(
+            onDismissRequest = { showReloadDialog = null },
+            title = { Text("重载插件") },
+            text = { Text("确定要重载「${plugin.title.ifBlank { plugin.name }}」吗？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val pluginPath = plugin.path
+                        showReloadDialog = null
+                        viewModel.reloadPlugin(pluginPath) {
+                            onRefreshCurrentUser()
+                        }
+                    },
+                ) { Text("确定") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReloadDialog = null }) { Text("取消") }
             },
         )
     }
@@ -255,11 +279,7 @@ fun MyPluginsScreen(
                                 MyPluginCard(
                                     plugin = plugin,
                                     onClick = { onPluginClick(plugin) },
-                                    onReload = {
-                                        viewModel.reloadPlugin(plugin.path) {
-                                            onRefreshCurrentUser()
-                                        }
-                                    },
+                                    onReload = { showReloadDialog = plugin },
                                     onUninstall = { showUninstallDialog = plugin },
                                 )
                             }
