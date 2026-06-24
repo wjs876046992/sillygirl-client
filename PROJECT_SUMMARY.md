@@ -375,6 +375,7 @@ Column {
   - Empty search result hint
   - **PaginationWidget** - 上一页/下一页按钮 + 页码显示
   - **列表页操作** - 每个插件卡片底部显示重载和卸载按钮
+  - **重载确认** - 重载操作带确认对话框，防止误操作
   - **卸载确认** - 卸载操作带确认对话框，防止误操作
   - **操作后刷新** - 卸载/重载成功后自动刷新首页 currentUser
 - PluginMarketScreen:
