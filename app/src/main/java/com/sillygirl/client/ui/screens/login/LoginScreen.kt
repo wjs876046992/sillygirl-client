@@ -24,14 +24,17 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sillygirl.client.LocalServerConfig
+import com.sillygirl.client.data.api.RetrofitClient
+import com.sillygirl.client.data.repository.AuthRepository
+import com.sillygirl.client.data.repository.ServerConfig
 import com.sillygirl.client.ui.theme.PrimaryGradientColors
 import com.sillygirl.client.ui.screens.login.LoginViewModelFactory
+import kotlinx.coroutines.launch
 
-// 测试配置（仅 debug 阶段使用）
-private val TEST_SERVER_URL = "http://192.168.1.12:8081"
-private val TEST_USERNAME = "silly"
-private val TEST_PASSWORD = "yKAuGG58S4zKHS"
-
+/**
+ * 手动登录页面 - 保留作为备用
+ * 主流程已改为选择服务器后自动登录
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -40,13 +43,6 @@ fun LoginScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var passwordVisible by remember { mutableStateOf(false) }
-
-    // 自动填充测试配置
-    LaunchedEffect(Unit) {
-        viewModel.updateServerUrl(TEST_SERVER_URL)
-        viewModel.updateUsername(TEST_USERNAME)
-        viewModel.updatePassword(TEST_PASSWORD)
-    }
 
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) onLoginSuccess()
@@ -217,6 +213,127 @@ fun LoginScreen(
                 } else {
                     Text("登 录", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * 自动登录页面 - 选择服务器后自动用保存的凭证登录
+ * 显示加载动画，登录成功后跳转到 Dashboard
+ */
+@Composable
+fun AutoLoginScreen(
+    serverUrl: String,
+    username: String,
+    password: String,
+    onLoginSuccess: () -> Unit,
+    onLoginFailed: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val authRepo = remember { AuthRepository() }
+    val serverConfig = LocalServerConfig.current
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        scope.launch {
+            isLoading = true
+            errorMessage = null
+
+            val result = authRepo.login(serverUrl, username, password)
+            result.fold(
+                onSuccess = {
+                    // 登录成功，保存 token
+                    RetrofitClient.token?.let { token ->
+                        serverConfig.saveToken(token)
+                    }
+                    isLoading = false
+                    onLoginSuccess()
+                },
+                onFailure = { e ->
+                    isLoading = false
+                    errorMessage = e.message ?: "登录失败"
+                    // 延迟后返回服务器列表
+                    kotlinx.coroutines.delay(2000)
+                    onLoginFailed()
+                }
+            )
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            // Logo
+            Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .shadow(24.dp, RoundedCornerShape(40))
+                        .clip(RoundedCornerShape(40))
+                        .background(
+                            brush = Brush.horizontalGradient(PrimaryGradientColors),
+                            shape = RoundedCornerShape(40),
+                        ),
+                )
+                Text("🤖", fontSize = 48.sp)
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            Text(
+                "SillyGirl",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "正在登录...",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    serverUrl,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else if (errorMessage != null) {
+                Icon(
+                    Icons.Filled.Error,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    errorMessage ?: "登录失败",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "正在返回...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

@@ -18,11 +18,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.sillygirl.client.data.api.RetrofitClient
+import com.sillygirl.client.data.repository.AuthRepository
 import com.sillygirl.client.data.repository.ServerConfig
 import com.sillygirl.client.ui.components.GlassCard
 import com.sillygirl.client.ui.theme.DangerColor
 import com.sillygirl.client.ui.theme.SuccessColor
 import com.sillygirl.client.ui.components.MiniAppBar
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +40,9 @@ fun ServiceScreen(
     var serverToDelete by remember { mutableStateOf<Pair<Int, ServerConfig.ServerInfo>?>(null) }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val authRepo = remember { AuthRepository() }
+    var isSwitching by remember { mutableStateOf(false) }
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
@@ -49,20 +54,52 @@ fun ServiceScreen(
     // 切换确认
     serverToSwitch?.let { (idx, server) ->
         AlertDialog(
-            onDismissRequest = { serverToSwitch = null },
+            onDismissRequest = { if (!isSwitching) serverToSwitch = null },
             title = { Text("切换服务器") },
-            text = { Text("确定要切换到「${server.displayName}」吗？当前会话将退出。") },
-            confirmButton = {
-                TextButton(onClick = {
-                    serverConfig.setDefaultIndex(idx)
-                    // 设置新服务器地址到 RetrofitClient，让登录页能连上
-                    RetrofitClient.setServer(server.url)
-                    serverConfig.clearToken()
-                    onServerSwitched()
-                    serverToSwitch = null
-                }) { Text("切换") }
+            text = {
+                if (isSwitching) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(12.dp))
+                        Text("正在登录「${server.displayName}」...")
+                    }
+                } else {
+                    Text("确定要切换到「${server.displayName}」吗？当前会话将退出。")
+                }
             },
-            dismissButton = { TextButton(onClick = { serverToSwitch = null }) { Text("取消") } },
+            confirmButton = {
+                if (!isSwitching) {
+                    TextButton(onClick = {
+                        scope.launch {
+                            isSwitching = true
+                            // 尝试自动登录
+                            val result = authRepo.login(server.url, server.username, server.password)
+                            result.fold(
+                                onSuccess = {
+                                    serverConfig.setDefaultIndex(idx)
+                                    serverConfig.saveToken(RetrofitClient.token ?: "")
+                                    isSwitching = false
+                                    serverToSwitch = null
+                                    onServerSwitched()
+                                },
+                                onFailure = { e ->
+                                    isSwitching = false
+                                    serverToSwitch = null
+                                    snackbarMessage = "登录失败: ${e.message}"
+                                }
+                            )
+                        }
+                    }) { Text("切换") }
+                }
+            },
+            dismissButton = {
+                if (!isSwitching) {
+                    TextButton(onClick = { serverToSwitch = null }) { Text("取消") }
+                }
+            },
         )
     }
 

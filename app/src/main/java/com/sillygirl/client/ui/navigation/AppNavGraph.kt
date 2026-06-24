@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.sillygirl.client.LocalServerConfig
 import com.sillygirl.client.data.api.RetrofitClient
 import com.sillygirl.client.data.model.UserData
@@ -22,6 +24,7 @@ import com.sillygirl.client.data.repository.ServerConfig
 import com.sillygirl.client.ui.screens.dashboard.DashboardScreen
 import com.sillygirl.client.ui.screens.fenyong.FenyongScreen
 import com.sillygirl.client.ui.screens.login.LoginScreen
+import com.sillygirl.client.ui.screens.login.AutoLoginScreen
 import com.sillygirl.client.ui.screens.settings.SettingsScreen
 import com.sillygirl.client.ui.screens.plugins.MyPluginsScreen
 import com.sillygirl.client.ui.screens.plugins.PluginMarketScreen
@@ -52,6 +55,7 @@ object Routes {
     const val TASKS = "tasks"
     const val SERVICE = "service"
     const val STORAGE = "storage"
+    const val AUTO_LOGIN = "auto_login" // 自动登录加载页
 }
 
 @Composable
@@ -94,12 +98,35 @@ fun AppNavGraph() {
             return@LaunchedEffect
         }
 
-        // 有服务器：尝试用保存的 token 验证
+        // 有服务器：先设置服务器地址
+        val server = defaultServer!!
+        RetrofitClient.setServer(server.url)
+
+        // 尝试用保存的 token 验证
         val savedToken = serverConfig.getToken()
         if (savedToken == null) {
-            // 无 token，直接去登录
-            isLoggedIn = false
-            isVerifying = false
+            // 无 token，检查是否有保存的用户名密码，自动登录
+            if (server.username.isNotBlank() && server.password.isNotBlank()) {
+                // 有保存的凭证，自动登录
+                withContext(Dispatchers.IO) {
+                    authRepo.login(server.url, server.username, server.password)
+                }.fold(
+                    onSuccess = {
+                        serverConfig.saveToken(RetrofitClient.token ?: "")
+                        isLoggedIn = true
+                        isVerifying = false
+                    },
+                    onFailure = {
+                        // 自动登录失败，跳转到服务器列表
+                        isLoggedIn = false
+                        isVerifying = false
+                    }
+                )
+            } else {
+                // 无保存凭证，跳转到服务器列表
+                isLoggedIn = false
+                isVerifying = false
+            }
             return@LaunchedEffect
         }
 
@@ -113,11 +140,31 @@ fun AppNavGraph() {
                 isVerifying = false
             },
             onFailure = {
-                // token 过期，清除
-                serverConfig.clearToken()
-                RetrofitClient.token = null
-                isLoggedIn = false
-                isVerifying = false
+                // token 过期，尝试用保存的凭证自动登录
+                if (server.username.isNotBlank() && server.password.isNotBlank()) {
+                    withContext(Dispatchers.IO) {
+                        authRepo.login(server.url, server.username, server.password)
+                    }.fold(
+                        onSuccess = {
+                            serverConfig.saveToken(RetrofitClient.token ?: "")
+                            isLoggedIn = true
+                            isVerifying = false
+                        },
+                        onFailure = {
+                            // 自动登录失败，清除 token，跳转到服务器列表
+                            serverConfig.clearToken()
+                            RetrofitClient.token = null
+                            isLoggedIn = false
+                            isVerifying = false
+                        }
+                    )
+                } else {
+                    // 无保存凭证，清除 token，跳转到服务器列表
+                    serverConfig.clearToken()
+                    RetrofitClient.token = null
+                    isLoggedIn = false
+                    isVerifying = false
+                }
             }
         )
     }
@@ -146,7 +193,7 @@ fun AppNavGraph() {
 
     val startRoute = when {
         !hasServer -> Routes.SERVER_LIST
-        !isLoggedIn -> Routes.LOGIN
+        !isLoggedIn -> Routes.SERVER_LIST  // 没有登录成功，跳转到服务器列表（支持自动登录）
         else -> Routes.DASHBOARD
     }
 
@@ -181,13 +228,8 @@ fun AppNavGraph() {
                 ServerListScreen(
                     viewModel = vm,
                     onServerSelected = { server: ServerConfig.ServerInfo ->
-                        RetrofitClient.setServer(server.url)
-                        val savedToken = serverConfig.getToken()
-                        if (savedToken != null) {
-                            RetrofitClient.token = savedToken
-                            serverConfig.saveToken(savedToken)
-                        }
-                        navController.navigate(Routes.LOGIN) {
+                        // 选择服务器后自动登录
+                        navController.navigate("auto_login?url=${server.url}&username=${server.username}&password=${server.password}") {
                             popUpTo(Routes.SERVER_LIST) { inclusive = true }
                         }
                     },
@@ -200,6 +242,38 @@ fun AppNavGraph() {
                         isLoggedIn = true
                         navController.navigate(Routes.DASHBOARD) {
                             popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // 自动登录页面 - 选择服务器后自动用保存的凭证登录
+            composable(
+                route = "auto_login?url={url}&username={username}&password={password}",
+                arguments = listOf(
+                    navArgument("url") { type = NavType.StringType },
+                    navArgument("username") { type = NavType.StringType },
+                    navArgument("password") { type = NavType.StringType },
+                )
+            ) { backStackEntry ->
+                val url = backStackEntry.arguments?.getString("url") ?: ""
+                val username = backStackEntry.arguments?.getString("username") ?: ""
+                val password = backStackEntry.arguments?.getString("password") ?: ""
+
+                AutoLoginScreen(
+                    serverUrl = url,
+                    username = username,
+                    password = password,
+                    onLoginSuccess = {
+                        isLoggedIn = true
+                        navController.navigate(Routes.DASHBOARD) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    onLoginFailed = {
+                        // 登录失败，返回服务器列表
+                        navController.navigate(Routes.SERVER_LIST) {
+                            popUpTo(0) { inclusive = true }
                         }
                     }
                 )
@@ -296,12 +370,12 @@ fun AppNavGraph() {
                 ServiceScreen(
                     onBack = { navController.popBackStack() },
                     onServerSwitched = {
-                        // 切换服务器：重置所有状态，跳转登录
-                        RetrofitClient.reset()
+                        // 切换服务器成功（已在 ServiceScreen 中自动登录）
+                        // 重置用户信息，重新加载
                         currentUser = null
                         currentUserLoaded = false
-                        isLoggedIn = false
-                        navController.navigate(Routes.LOGIN) {
+                        isLoggedIn = true
+                        navController.navigate(Routes.DASHBOARD) {
                             popUpTo(0) { inclusive = true }
                         }
                     },
