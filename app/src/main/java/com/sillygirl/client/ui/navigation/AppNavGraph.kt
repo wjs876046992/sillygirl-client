@@ -72,6 +72,20 @@ fun AppNavGraph() {
     var currentUser by remember { mutableStateOf<UserData?>(null) }
     var currentUserLoaded by remember { mutableStateOf(false) }
 
+    // 刷新 currentUser 的回调（供插件安装/卸载/重载后更新首页）
+    val refreshCurrentUser: () -> Unit = {
+        scope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    RetrofitClient.api.getCurrentUser()
+                }
+                if (response.success && response.data != null) {
+                    currentUser = response.data
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
     // 注册会话过期回调 — 任何 API 返回 401 时触发
     DisposableEffect(Unit) {
         RetrofitClient.onSessionExpired = {
@@ -296,6 +310,24 @@ fun AppNavGraph() {
             }
 
             composable(Routes.DASHBOARD) {
+                var dashboardRefresh by remember { mutableStateOf<(() -> Unit)?>(null) }
+                val refreshDashboard = remember {
+                    {
+                        // 刷新 currentUser
+                        scope.launch {
+                            try {
+                                val response = withContext(Dispatchers.IO) {
+                                    RetrofitClient.api.getCurrentUser()
+                                }
+                                if (response.success && response.data != null) {
+                                    currentUser = response.data
+                                }
+                            } catch (_: Exception) {}
+                        }
+                        // 刷新 dashboard 数据
+                        dashboardRefresh?.invoke()
+                    }
+                }
                 val serverDisplayUrl = remember {
                     val url = RetrofitClient.currentServerUrl() ?: ""
                     // 截取 host:port 部分作为显示
@@ -326,6 +358,9 @@ fun AppNavGraph() {
                                 }
                             },
                             actions = {
+                                IconButton(onClick = { refreshDashboard() }) {
+                                    Icon(Icons.Filled.Refresh, "刷新")
+                                }
                                 IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
                                     Icon(Icons.Filled.Settings, "设置")
                                 }
@@ -340,6 +375,7 @@ fun AppNavGraph() {
                             onNavigateToTasks = { navController.navigate(Routes.TASKS) },
                             onNavigateToService = { navController.navigate(Routes.SERVICE) },
                             onNavigateToStorage = { navController.navigate(Routes.STORAGE) },
+                            onRefreshReady = { refreshFn -> dashboardRefresh = refreshFn },
                         )
                     }
                 }
@@ -365,17 +401,24 @@ fun AppNavGraph() {
 
             composable(Routes.MY_PLUGINS) {
                 MyPluginsScreen(
-                    plugins = currentUser?.plugins ?: emptyList(),
                     onBack = { navController.popBackStack() },
                     onPluginClick = { plugin ->
                         // 导航到插件详情页，使用 UUID
                         val uuid = plugin.path.removePrefix("/script/")
                         navController.navigate("plugin_detail/$uuid")
                     },
+                    onRefreshCurrentUser = refreshCurrentUser,
                 )
             }
             composable(Routes.PLUGIN_MARKET) {
-                PluginMarketScreen(onBack = { navController.popBackStack() })
+                PluginMarketScreen(
+                    onBack = { navController.popBackStack() },
+                    onPluginClick = { plugin ->
+                        val uuid = plugin.path.removePrefix("/script/")
+                        navController.navigate("plugin_detail/$uuid")
+                    },
+                    onRefreshCurrentUser = refreshCurrentUser,
+                )
             }
             composable(Routes.PLUGIN_DETAIL) { backStackEntry ->
                 val pluginUuid = backStackEntry.arguments?.getString("pluginUuid") ?: ""

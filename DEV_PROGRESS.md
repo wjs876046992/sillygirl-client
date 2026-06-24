@@ -1,5 +1,295 @@
 # sillygirl-client 开发进展
 
+## 2026-06-24 第九次会话完成的工作
+
+### 一、插件安装/卸载/重载后刷新首页
+
+**问题描述：**
+- 安装或卸载插件后，首页的插件数量不会自动更新
+- 需要手动刷新或重新进入首页才能看到最新数据
+
+**解决方案：**
+
+1. **AppNavGraph 新增 `refreshCurrentUser` 回调**
+   - 创建 `refreshCurrentUser` lambda，调用 `getCurrentUser` API 更新 `currentUser` 状态
+   - 传递给 `MyPluginsScreen` 和 `PluginMarketScreen`
+
+2. **PluginMarketViewModel 增强**
+   - `installPlugin()` 和 `uninstallPlugin()` 新增可选 `onSuccess` 回调参数
+   - 安装/卸载成功后调用回调刷新首页
+
+3. **MyPluginsViewModel 增强**
+   - `reloadPlugin()` 新增可选 `onSuccess` 回调参数
+   - 重载成功后调用回调刷新首页
+
+**修改文件：**
+| 文件 | 修改内容 |
+|------|----------|
+| `AppNavGraph.kt` | 新增 `refreshCurrentUser` 回调，传递给插件页面 |
+| `PluginViewModels.kt` | `installPlugin()`/`uninstallPlugin()`/`reloadPlugin()` 新增 `onSuccess` 回调 |
+| `PluginScreens.kt` | `MyPluginsScreen` 和 `PluginMarketScreen` 接收并使用 `onRefreshCurrentUser` |
+
+### 二、插件列表页添加重载和卸载按钮
+
+**问题描述：**
+- 重载和卸载操作只能在插件详情页进行
+- 用户需要进入详情页才能执行这些常用操作，不够便捷
+
+**解决方案：**
+
+1. **MyPluginCard 增强**
+   - 新增 `onReload` 和 `onUninstall` 回调参数
+   - 在插件卡片底部添加操作按钮行（分隔线 + 重载/卸载芯片）
+   - 重载按钮：Refresh 图标 + "重载" 文字
+   - 卸载按钮：Delete 图标 + "卸载" 文字（红色）
+
+2. **MyPluginsScreen 增强**
+   - 新增卸载确认对话框（`showUninstallDialog` 状态）
+   - 卸载操作带确认对话框，防止误操作
+   - 卸载/重载成功后自动刷新首页
+
+**修改文件：**
+| 文件 | 修改内容 |
+|------|----------|
+| `PluginScreens.kt` | `MyPluginCard` 添加重载/卸载按钮，`MyPluginsScreen` 添加卸载确认对话框 |
+
+---
+
+## 2026-06-24 第八次会话完成的工作
+
+### 一、移除插件市场的来源和分类筛选
+
+**问题描述：**
+- 插件市场的来源筛选和分类筛选功能过于复杂，实际使用频率低
+- 简化UI，只保留关键词搜索和Tab切换
+
+**解决方案：**
+
+1. **PluginMarketScreen 简化**
+   - 移除 `selectedOrigins`、`selectedClass` 状态变量
+   - 移除 `originsExpanded`、`classesExpanded` 折叠状态
+   - 移除来源筛选和分类筛选的 UI 组件
+   - 移除 `CollapsibleFilterSection` 可折叠组件（已无使用）
+   - 移除 `AnimatedVisibility`、`clickable` 等无用 import
+
+2. **PluginMarketViewModel 简化**
+   - 移除 `currentClassFilter`、`currentOrigins` 状态
+   - 移除 `availableOrigins`、`availableClasses` 字段
+   - `load()` 函数简化，移除 `classFilter`、`origins` 参数
+   - `switchTab()` 简化，不再传递筛选参数
+   - `loadWithFilters()` 替换为 `loadWithKeyword()`
+
+3. **PluginRepository 简化**
+   - `getAvailablePlugins()` 移除 `classFilter`、`origins` 参数
+
+**修改文件：**
+| 文件 | 修改内容 |
+|------|----------|
+| `PluginScreens.kt` | 移除来源/分类筛选UI、移除CollapsibleFilterSection |
+| `PluginViewModels.kt` | 简化状态和load函数、替换loadWithFilters为loadWithKeyword |
+| `PluginRepository.kt` | 简化getAvailablePlugins参数 |
+
+---
+
+## 2026-06-24 第七次会话完成的工作
+
+### 一、插件市场功能迁移（从 admin/plugin/share）
+
+**问题描述：**
+- 原始 admin 页面 `/admin/plugin/share` 包含完整的插件市场功能
+- sillygirl-client 缺少部分功能：插件异常消息显示、认证来源标记、加密/模块标签、Tab 计数从 API 获取
+
+**解决方案：**
+
+1. **数据模型更新**
+   - `PluginInfo` 新增字段：`organization`(组织)、`identified`(认证来源)、`status`(状态 0/1/2/6)、`encrypt`(加密)、`module`(模块)、`messages`(异常消息)、`createAt`(创建时间)
+   - `PluginMessage` 新增数据类：`unix`(时间戳)、`messageClass`(warn/error)、`version`(版本)、`content`(内容)
+   - `PluginListResponse` 新增 `tab1`/`tab2`/`tab3` 计数字段和 `tab` 字段
+   - `PluginListResult` 新增 `tab1`/`tab2`/`tab3` 计数字段
+
+2. **ViewModel 更新**
+   - `PluginMarketUiState` 新增 `messagesDialogPlugin` 字段用于异常消息弹窗
+   - `PluginMarketViewModel` 新增方法：`showMessagesDialog()`、`dismissMessagesDialog()`、`clearPluginMessages()`
+   - `loadTabCounts()` 改为从 API 响应获取 tab 计数
+
+3. **UI 更新**
+   - `MarketPluginCard` 新增标签：
+     - 认证来源标签（金色背景，显示 organization）
+     - 模块标签（紫色背景）
+     - 加密脚本标签（橙色背景）
+     - 可升级状态标签
+     - 异常消息按钮（显示消息数量）
+   - 新增 `PluginMessagesDialog` 异常消息弹窗：
+     - 时间线样式显示消息
+     - 显示时间、版本标签、内容
+     - 清空按钮
+   - 新增 `formatMessageTime()` 时间格式化函数
+
+4. **API 对齐**
+   - 使用服务端返回的 `tab1`/`tab2`/`tab3` 计数，不再单独请求
+
+**修改文件：**
+| 文件 | 修改内容 |
+|------|----------|
+| `Models.kt` | `PluginInfo` 新增字段、`PluginMessage` 新增类、`PluginListResponse`/`PluginListResult` 新增 tab 计数 |
+| `PluginViewModels.kt` | 新增异常消息相关方法、更新 tab 计数逻辑 |
+| `PluginScreens.kt` | 新增标签显示、异常消息弹窗、时间格式化 |
+| `PluginRepository.kt` | `getAvailablePlugins()` 传递 tab 计数 |
+
+---
+
+## 2026-06-24 第六次会话完成的工作
+
+### 零、插件市场筛选参数修正
+
+**问题描述：**
+- `origin` 参数应传数组（多选），`class` 参数应传字符串（单选）
+- 分类筛选和来源筛选应默认折叠，展开后可操作
+- 筛选变更应立即触发服务端重新查询（而非客户端过滤）
+
+**解决方案：**
+1. `SillyGirlApi.getPluginList()` — `origin` 改为 `List<String>?`（Retrofit 自动编码为重复参数），`class` 保持 `String?`
+2. `PluginRepository` / `PluginMarketViewModel` — 筛选参数同步更新
+3. `PluginMarketScreen` — 新增 `CollapsibleFilterSection` 可折叠组件：
+   - 分类筛选：单选（FilterChip + "全部"选项），默认折叠
+   - 来源筛选：多选（FilterChip），默认折叠
+   - 标题行可点击展开/收起，显示激活筛选数量角标
+4. 筛选变更时调用 `loadWithFilters()` 重新从服务端加载，移除客户端过滤逻辑
+
+### 一、插件市场增强：服务端筛选 + 已安装插件操作
+
+**问题描述：**
+- 插件市场的来源和分类筛选使用客户端数据（从当前页插件列表提取），数据不完整
+- API 返回了 `classes` 和 `origins` 字段作为服务端提供的筛选选项，但前端未使用
+- 插件市场已安装的插件缺少配置表单入口
+- 已安装插件的操作按钮在一行中可能溢出
+
+**解决方案：**
+
+1. **API 模型更新**
+   - `PluginListResponse` 新增 `classes: Map<String, Int>` 和 `origins: Map<String, String>` 字段
+   - `PluginListResult` 同步新增这两个字段
+   - `SillyGirlApi.getPluginList()` 新增 `classFilter`(单选)、`origins`(多选数组)、`keyword` 查询参数
+
+2. **服务端筛选支持**
+   - `PluginRepository.getAvailablePlugins()` 和 `getInstalledPlugins()` 支持 `classFilter`(String?)、`origins`(List<String>?)、`keyword` 参数
+   - `PluginMarketViewModel.load()` 支持相同参数
+   - 新增 `loadWithFilters()` 统一筛选方法
+
+3. **PluginMarketScreen UI 增强**
+   - 使用服务端提供的 `origins` 和 `classes` 作为筛选选项
+   - **分类筛选**：单选（FilterChip），默认折叠，点击展开/收起
+   - **来源筛选**：多选（FilterChip），默认折叠，点击展开/收起
+   - 搜索栏：服务端关键词搜索
+   - 已安装插件操作按钮使用 `FlowRow` 防止溢出
+   - 新增 `CollapsibleFilterSection` 可折叠筛选组件（带激活数量角标）
+
+4. **配置表单入口**
+   - `MarketPluginCard` 新增 `onConfigForm` 回调
+   - 已安装且有表单的插件显示"配置"芯片（Settings 图标）
+
+5. **导航更新**
+   - `AppNavGraph` 中 `PluginMarketScreen` 新增 `onPluginClick` 回调
+
+**修改文件：**
+| 文件 | 修改内容 |
+|------|----------|
+| `Models.kt` | `PluginListResponse` 和 `PluginListResult` 新增 `classes`/`origins` 字段 |
+| `SillyGirlApi.kt` | `getPluginList()` 新增 `classFilter`/`origins`(List)/`keyword` 参数 |
+| `PluginRepository.kt` | 分页方法支持筛选参数，返回服务端筛选数据 |
+| `PluginViewModels.kt` | `PluginMarketUiState` 新增筛选选项字段，`loadWithFilters()` 统一筛选 |
+| `PluginScreens.kt` | 可折叠筛选面板、单选分类、多选来源、配置表单入口 |
+| `AppNavGraph.kt` | PluginMarketScreen 新增 onPluginClick 导航 |
+| `PROJECT_SUMMARY.md` | 更新文档 |
+
+---
+
+## 2026-06-24 第五次会话完成的工作
+
+### 一、插件列表支持分页查询
+
+**问题描述：**
+- 我的插件（MyPluginsScreen）和插件市场（PluginMarketScreen）都是一次性加载所有插件
+- 当插件数量较多时，加载速度慢，用户体验差
+
+**解决方案：**
+
+1. **PluginRepository 分页支持**
+   - `getInstalledPlugins(page, pageSize)` - 支持分页参数
+   - `getAvailablePlugins(page, pageSize)` - 支持分页参数
+   - 返回 `PluginListResult` 包含分页信息
+
+2. **PluginListResult 数据模型**
+   ```kotlin
+   data class PluginListResult(
+       val plugins: List<PluginInfo>,
+       val total: Int,
+       val page: Int,
+       val pageSize: Int,
+   ) {
+       val totalPages: Int
+       val hasNextPage: Boolean
+       val hasPrevPage: Boolean
+   }
+   ```
+
+3. **ViewModel 状态更新**
+   - `MyPluginsUiState` 添加分页字段：currentPage, totalPages, total, pageSize, isLoadingMore
+   - `PluginMarketUiState` 添加分页字段
+   - `loadPlugins()` 和 `load()` 方法支持分页参数
+   - 添加 `loadNextPage()` 和 `goToPage(page)` 方法
+
+4. **UI 分页控件**
+   - 新增 `PaginationWidget` 组件（上一页/下一页按钮 + 页码显示）
+   - MyPluginsScreen 和 PluginMarketScreen 底部显示分页控件
+   - 仅当 totalPages > 1 时显示
+
+**修改文件：**
+- `Models.kt` - 新增 PluginListResult 数据类
+- `PluginRepository.kt` - 分页查询方法
+- `PluginViewModels.kt` - 分页状态管理
+- `PluginScreens.kt` - 分页 UI 控件
+- `AppNavGraph.kt` - 更新 MyPluginsScreen 导航调用
+
+### 二、首页支持下拉刷新
+
+**问题描述：**
+- DashboardScreen 不支持下拉刷新
+- 用户需要点击刷新按钮才能更新数据
+
+**解决方案：**
+
+1. **下拉刷新实现**
+   - 使用 `pointerInput` 和 `detectVerticalDragGestures` 检测下拉手势
+   - 下拉距离超过阈值（150px）后松手触发刷新
+   - 刷新时显示 CircularProgressIndicator
+
+2. **UI 状态**
+   - `isRefreshing` - 是否正在刷新
+   - `pullDistance` - 下拉距离
+   - 下拉过程中显示箭头图标，角度随下拉距离变化
+
+3. **刷新流程**
+   - 下拉超过阈值 → 松手 → 显示加载动画 → 调用 `viewModel.loadDashboard(forceRefresh = true)`
+   - 数据加载完成 → 停止加载动画
+
+**修改文件：**
+- `DashboardScreen.kt` - 添加下拉刷新功能
+
+### 修改文件清单
+
+| 文件 | 修改内容 |
+|------|----------|
+| `Models.kt` | 新增 PluginListResult 数据类 |
+| `PluginRepository.kt` | 分页查询方法 |
+| `PluginViewModels.kt` | 分页状态管理 |
+| `PluginScreens.kt` | 分页 UI 控件 |
+| `AppNavGraph.kt` | 更新 MyPluginsScreen 导航调用 |
+| `DashboardScreen.kt` | 添加下拉刷新功能 |
+| `PROJECT_SUMMARY.md` | 更新文档 |
+
+---
+
 ## 2026-06-24 第四次会话完成的工作
 
 ### 一、修复切换服务器失败选中错误的问题

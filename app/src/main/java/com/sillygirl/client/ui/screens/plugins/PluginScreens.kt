@@ -1,6 +1,5 @@
 package com.sillygirl.client.ui.screens.plugins
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -42,21 +41,24 @@ import com.sillygirl.client.ui.theme.*
 import com.sillygirl.client.data.model.PluginRoute
 import com.sillygirl.client.ui.components.MiniAppBar
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MyPluginsScreen(
-    plugins: List<PluginRoute>,
     onBack: () -> Unit,
     onPluginClick: (PluginRoute) -> Unit,
+    onRefreshCurrentUser: () -> Unit = {},
     viewModel: MyPluginsViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var searchQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var selectedOrigins by remember { mutableStateOf(setOf<String>()) }
+    var selectedClasses by remember { mutableStateOf(setOf<String>()) }
+    var showUninstallDialog by remember { mutableStateOf<PluginRoute?>(null) }
 
-    LaunchedEffect(plugins) {
-        viewModel.loadPlugins(plugins)
+    // 初始加载
+    LaunchedEffect(Unit) {
+        viewModel.loadPlugins(page = 1)
     }
 
     LaunchedEffect(uiState.snackbarMessage) {
@@ -65,30 +67,58 @@ fun MyPluginsScreen(
         viewModel.clearSnackbar()
     }
 
-    // 收集所有分类
-    val allCategories = remember(uiState.plugins) {
+    // 卸载确认对话框
+    showUninstallDialog?.let { plugin ->
+        AlertDialog(
+            onDismissRequest = { showUninstallDialog = null },
+            title = { Text("卸载插件") },
+            text = { Text("确定要卸载「${plugin.title.ifBlank { plugin.name }}」吗？此操作不可撤销。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val pluginPath = plugin.path
+                        showUninstallDialog = null
+                        viewModel.uninstallPlugin(pluginPath) {
+                            onRefreshCurrentUser()
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text("卸载") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUninstallDialog = null }) { Text("取消") }
+            },
+        )
+    }
+
+    // 收集所有 origins 和 classes
+    val allOrigins = remember(uiState.plugins) {
+        uiState.plugins.map { it.origin }.filter { it.isNotBlank() }.distinct().sorted()
+    }
+    val allClasses = remember(uiState.plugins) {
         uiState.plugins.flatMap { it.classes }.distinct().sorted()
     }
 
     // 过滤插件
-    val filteredPlugins = remember(uiState.plugins, searchQuery, selectedCategory) {
+    val filteredPlugins = remember(uiState.plugins, searchQuery, selectedOrigins, selectedClasses) {
         uiState.plugins.filter { plugin ->
             val matchesSearch = searchQuery.isBlank() ||
                 plugin.title.contains(searchQuery, ignoreCase = true) ||
                 plugin.name.contains(searchQuery, ignoreCase = true) ||
                 plugin.description.contains(searchQuery, ignoreCase = true) ||
                 plugin.author.contains(searchQuery, ignoreCase = true)
-            val matchesCategory = selectedCategory == null || plugin.classes.contains(selectedCategory)
-            matchesSearch && matchesCategory
+            val matchesOrigin = selectedOrigins.isEmpty() || plugin.origin in selectedOrigins
+            val matchesClass = selectedClasses.isEmpty() || plugin.classes.any { it in selectedClasses }
+            matchesSearch && matchesOrigin && matchesClass
         }
     }
 
     Scaffold(
         topBar = {
             MiniAppBar(
-                title = { Text("我的插件 (${uiState.plugins.size})") },
+                title = { Text("我的插件 (${uiState.total})") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
-                actions = { IconButton(onClick = { viewModel.loadPlugins(plugins, showRefreshHint = true) }) { Icon(Icons.Filled.Refresh, "刷新") } }
+                actions = { IconButton(onClick = { viewModel.loadPlugins(page = 1, showRefreshHint = true) }) { Icon(Icons.Filled.Refresh, "刷新") } }
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -104,82 +134,155 @@ fun MyPluginsScreen(
                 }
             }
             else -> {
-                LazyColumn(
-                    Modifier.fillMaxSize().padding(p),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    // 搜索栏
-                    item {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("搜索插件名称、描述、作者...") },
-                            leadingIcon = { Icon(Icons.Filled.Search, null) },
-                            trailingIcon = {
-                                if (searchQuery.isNotBlank()) {
-                                    IconButton(onClick = { searchQuery = "" }) {
-                                        Icon(Icons.Filled.Clear, "清除")
+                Column(Modifier.fillMaxSize().padding(p)) {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        // 搜索栏
+                        item {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = { Text("搜索插件名称、描述、作者...") },
+                                leadingIcon = { Icon(Icons.Filled.Search, null) },
+                                trailingIcon = {
+                                    if (searchQuery.isNotBlank()) {
+                                        IconButton(onClick = { searchQuery = "" }) {
+                                            Icon(Icons.Filled.Clear, "清除")
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                            )
+                        }
+
+                        // Origins 筛选（多选）
+                        if (allOrigins.isNotEmpty()) {
+                            item {
+                                Column {
+                                    Text(
+                                        "来源筛选",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        allOrigins.forEach { origin ->
+                                            val isSelected = origin in selectedOrigins
+                                            FilterChip(
+                                                selected = isSelected,
+                                                onClick = {
+                                                    selectedOrigins = if (isSelected) {
+                                                        selectedOrigins - origin
+                                                    } else {
+                                                        selectedOrigins + origin
+                                                    }
+                                                },
+                                                label = { Text(origin) },
+                                                shape = RoundedCornerShape(20.dp),
+                                            )
+                                        }
                                     }
                                 }
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                        )
-                    }
+                            }
+                        }
 
-                    // 分类筛选
-                    if (allCategories.isNotEmpty()) {
-                        item {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                FilterChip(
-                                    selected = selectedCategory == null,
-                                    onClick = { selectedCategory = null },
-                                    label = { Text("全部") },
-                                    shape = RoundedCornerShape(20.dp),
-                                )
-                                allCategories.take(5).forEach { category ->
-                                    FilterChip(
-                                        selected = selectedCategory == category,
-                                        onClick = { selectedCategory = if (selectedCategory == category) null else category },
-                                        label = { Text(category) },
-                                        shape = RoundedCornerShape(20.dp),
+                        // Classes 筛选（多选）
+                        if (allClasses.isNotEmpty()) {
+                            item {
+                                Column {
+                                    Text(
+                                        "分类筛选",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Medium,
                                     )
-                                }
-                            }
-                        }
-                    }
-
-                    // 插件统计
-                    item {
-                        Text(
-                            "共 ${filteredPlugins.size} 个插件" +
-                                if (uiState.plugins.count { it.running } > 0)
-                                    " · ${uiState.plugins.count { it.running }} 个运行中"
-                                else "",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-
-                    if (filteredPlugins.isEmpty()) {
-                        item {
-                            Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Filled.SearchOff, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(Modifier.height(8.dp))
-                                    Text("没有匹配的插件", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        allClasses.forEach { cls ->
+                                            val isSelected = cls in selectedClasses
+                                            FilterChip(
+                                                selected = isSelected,
+                                                onClick = {
+                                                    selectedClasses = if (isSelected) {
+                                                        selectedClasses - cls
+                                                    } else {
+                                                        selectedClasses + cls
+                                                    }
+                                                },
+                                                label = { Text(cls) },
+                                                shape = RoundedCornerShape(20.dp),
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
-                    } else {
-                        items(filteredPlugins, key = { it.path }) { plugin ->
-                            MyPluginCard(plugin, onClick = { onPluginClick(plugin) })
+
+                        // 插件统计
+                        item {
+                            Text(
+                                "共 ${filteredPlugins.size} 个插件" +
+                                    if (uiState.plugins.count { it.running } > 0)
+                                        " · ${uiState.plugins.count { it.running }} 个运行中"
+                                    else "",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
+
+                        if (filteredPlugins.isEmpty()) {
+                            item {
+                                Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(Icons.Filled.SearchOff, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Spacer(Modifier.height(8.dp))
+                                        Text("没有匹配的插件", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        } else {
+                            items(filteredPlugins, key = { it.path }) { plugin ->
+                                MyPluginCard(
+                                    plugin = plugin,
+                                    onClick = { onPluginClick(plugin) },
+                                    onReload = {
+                                        viewModel.reloadPlugin(plugin.path) {
+                                            onRefreshCurrentUser()
+                                        }
+                                    },
+                                    onUninstall = { showUninstallDialog = plugin },
+                                )
+                            }
+
+                            // 加载更多指示器
+                            if (uiState.isLoadingMore) {
+                                item {
+                                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 分页控件
+                    if (uiState.totalPages > 1) {
+                        PaginationWidget(
+                            currentPage = uiState.currentPage,
+                            totalPages = uiState.totalPages,
+                            onPrevPage = { viewModel.goToPage(uiState.currentPage - 1) },
+                            onNextPage = { viewModel.goToPage(uiState.currentPage + 1) },
+                        )
                     }
                 }
             }
@@ -187,14 +290,29 @@ fun MyPluginsScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PluginMarketScreen(
     onBack: () -> Unit,
+    onPluginClick: (PluginRoute) -> Unit = {},
+    onRefreshCurrentUser: () -> Unit = {},
     viewModel: PluginMarketViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    var searchQuery by remember { mutableStateOf("") }
+
+    // Tab 数据
+    val tabs = listOf(
+        "tab1" to "已安装",
+        "tab2" to "未安装",
+        "tab3" to "可升级",
+    )
+    val tabCounts = mapOf(
+        "tab1" to uiState.tab1Count,
+        "tab2" to uiState.tab2Count,
+        "tab3" to uiState.tab3Count,
+    )
 
     LaunchedEffect(uiState.snackbarMessage) {
         val msg = uiState.snackbarMessage ?: return@LaunchedEffect
@@ -202,34 +320,176 @@ fun PluginMarketScreen(
         viewModel.clearSnackbar()
     }
 
+    // 搜索变更时重新从服务端加载
+    fun reloadWithSearch() {
+        viewModel.loadWithKeyword(keyword = searchQuery.ifBlank { null })
+    }
+
+    // 异常消息弹窗
+    uiState.messagesDialogPlugin?.let { plugin ->
+        PluginMessagesDialog(
+            plugin = plugin,
+            onDismiss = { viewModel.dismissMessagesDialog() },
+            onClear = { viewModel.clearPluginMessages(plugin.id) },
+        )
+    }
+
     Scaffold(
         topBar = {
             MiniAppBar(
                 title = { Text("插件市场") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
-                actions = { IconButton(onClick = { viewModel.load(showRefreshHint = true) }) { Icon(Icons.Filled.Refresh, "刷新") } }
+                actions = {
+                    IconButton(onClick = {
+                        searchQuery = ""
+                        viewModel.load(page = 1, isRefresh = true, showRefreshHint = true)
+                    }) {
+                        Icon(Icons.Filled.Refresh, "刷新")
+                    }
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { p ->
-        when {
-            uiState.isLoading -> Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            uiState.plugins.isEmpty() -> Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Filled.Store, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(8.dp))
-                    Text("暂无可用插件", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.fillMaxSize().padding(p)) {
+            // Tab 栏
+            TabRow(
+                selectedTabIndex = tabs.indexOfFirst { it.first == uiState.activeTab }.coerceAtLeast(0),
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
+            ) {
+                tabs.forEach { (key, label) ->
+                    val count = tabCounts[key]
+                    Tab(
+                        selected = uiState.activeTab == key,
+                        onClick = {
+                            searchQuery = ""
+                            viewModel.switchTab(key)
+                        },
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(label)
+                                if (count != null && count > 0) {
+                                    Spacer(Modifier.width(4.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (uiState.activeTab == key)
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.surfaceVariant,
+                                    ) {
+                                        Text(
+                                            "$count",
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontSize = 10.sp,
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                    )
                 }
             }
-            else -> {
-                LazyColumn(
-                    Modifier.fillMaxSize().padding(p),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(uiState.plugins) { plugin ->
-                        MarketPluginCard(plugin, onInstall = { viewModel.installPlugin(plugin.id) })
+
+            when {
+                uiState.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                uiState.plugins.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Filled.Store, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                        Text("暂无插件", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        // 搜索栏
+                        item {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = {
+                                    searchQuery = it
+                                    reloadWithSearch()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = { Text("搜索插件名称、描述、作者...") },
+                                leadingIcon = { Icon(Icons.Filled.Search, null) },
+                                trailingIcon = {
+                                    if (searchQuery.isNotBlank()) {
+                                        IconButton(onClick = {
+                                            searchQuery = ""
+                                            reloadWithSearch()
+                                        }) {
+                                            Icon(Icons.Filled.Clear, "清除")
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                            )
+                        }
+
+                        // 插件统计
+                        item {
+                            Text(
+                                "共 ${uiState.total} 个插件",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
+                        if (uiState.plugins.isEmpty()) {
+                            item {
+                                Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(Icons.Filled.SearchOff, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Spacer(Modifier.height(8.dp))
+                                        Text("没有匹配的插件", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        } else {
+                            items(uiState.plugins) { plugin ->
+                                val installedPlugin = viewModel.getInstalledPlugin(plugin.id)
+                                MarketPluginCard(
+                                    plugin = plugin,
+                                    installedPlugin = installedPlugin,
+                                    onInstall = { viewModel.installPlugin(plugin.id) { onRefreshCurrentUser() } },
+                                    onUninstall = { viewModel.uninstallPlugin(plugin.id) { onRefreshCurrentUser() } },
+                                    onToggleDebug = { debug -> viewModel.toggleDebug(plugin.id, debug) },
+                                    onToggleDisable = { disable -> viewModel.toggleDisable(plugin.id, disable) },
+                                    onToggleRunning = { running -> viewModel.toggleRunning(plugin.id, running) },
+                                    onConfigForm = {
+                                        installedPlugin?.let { onPluginClick(it) }
+                                    },
+                                    onShowMessages = { viewModel.showMessagesDialog(plugin) },
+                                )
+                            }
+                        }
+
+                        // 加载更多指示器
+                        if (uiState.isLoadingMore) {
+                            item {
+                                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    // 分页控件
+                    if (uiState.totalPages > 1) {
+                        PaginationWidget(
+                            currentPage = uiState.currentPage,
+                            totalPages = uiState.totalPages,
+                            onPrevPage = { viewModel.goToPage(uiState.currentPage - 1) },
+                            onNextPage = { viewModel.goToPage(uiState.currentPage + 1) },
+                        )
                     }
                 }
             }
@@ -238,7 +498,12 @@ fun PluginMarketScreen(
 }
 
 @Composable
-private fun MyPluginCard(plugin: PluginRoute, onClick: () -> Unit) {
+private fun MyPluginCard(
+    plugin: PluginRoute,
+    onClick: () -> Unit,
+    onReload: (() -> Unit)? = null,
+    onUninstall: (() -> Unit)? = null,
+) {
     GlassCard(onClick = onClick) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             // 图标 + 运行状态指示点
@@ -351,6 +616,54 @@ private fun MyPluginCard(plugin: PluginRoute, onClick: () -> Unit) {
                         )
                     }
                 }
+
+                // 操作按钮行（重载、卸载）
+                if (onReload != null || onUninstall != null) {
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (onReload != null) {
+                            AssistChip(
+                                onClick = onReload,
+                                label = { Text("重载", fontSize = 10.sp) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Refresh,
+                                        null,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.height(28.dp),
+                            )
+                        }
+                        if (onUninstall != null) {
+                            AssistChip(
+                                onClick = onUninstall,
+                                label = {
+                                    Text(
+                                        "卸载",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Delete,
+                                        null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.height(28.dp),
+                            )
+                        }
+                    }
+                }
             }
             Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
         }
@@ -378,8 +691,21 @@ private fun StatusChip(text: String, color: Color) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MarketPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo, onInstall: () -> Unit) {
+private fun MarketPluginCard(
+    plugin: com.sillygirl.client.data.model.PluginInfo,
+    installedPlugin: PluginRoute?,
+    onInstall: () -> Unit,
+    onUninstall: () -> Unit,
+    onToggleDebug: (Boolean) -> Unit,
+    onToggleDisable: (Boolean) -> Unit,
+    onToggleRunning: (Boolean) -> Unit,
+    onConfigForm: () -> Unit = {},
+    onShowMessages: () -> Unit = {},
+) {
+    val isInstalled = installedPlugin != null
+
     GlassCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -401,19 +727,445 @@ private fun MarketPluginCard(plugin: com.sillygirl.client.data.model.PluginInfo,
                 }
             }
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.fillMaxWidth()) {
-                Text(plugin.title.ifBlank { plugin.id }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Column(Modifier.weight(1f)) {
+                // 标题行 + 状态标签
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(plugin.title.ifBlank { plugin.id }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    if (isInstalled) {
+                        Spacer(Modifier.width(6.dp))
+                        StatusChip("已安装", SuccessColor)
+                    }
+                    if (plugin.status == 1) {
+                        Spacer(Modifier.width(6.dp))
+                        StatusChip("可升级", MaterialTheme.colorScheme.primary)
+                    }
+                    if (plugin.status == 6) {
+                        Spacer(Modifier.width(6.dp))
+                        StatusChip("原创", Color(0xFF722ED1)) // 紫色
+                    }
+                }
                 if (plugin.description.isNotBlank()) {
                     Text(plugin.description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }
-                Text("${plugin.author} · ${plugin.downloads}次下载 · v${plugin.version}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // 标签行：来源 + 作者 + 下载量 + 版本
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // 认证来源标签
+                    if (plugin.identified && plugin.organization.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color(0xFFFFF7E6), // 金色背景
+                        ) {
+                            Text(
+                                plugin.organization,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFD48806), // 金色文字
+                                fontSize = 9.sp,
+                            )
+                        }
+                    } else if (plugin.organization.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                        ) {
+                            Text(
+                                plugin.organization,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 9.sp,
+                            )
+                        }
+                    }
+                    Text("${plugin.author} · ${plugin.downloads}次下载 · v${plugin.version}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                // 标签行：分类 + 特殊标签
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(top = 2.dp),
+                ) {
+                    if (plugin.classes.isNotEmpty()) {
+                        plugin.classes.take(3).forEach { cls ->
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                            ) {
+                                Text(
+                                    cls,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontSize = 9.sp,
+                                )
+                            }
+                        }
+                    }
+                    if (plugin.module) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                        ) {
+                            Text(
+                                "模块",
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                fontSize = 9.sp,
+                            )
+                        }
+                    }
+                    if (plugin.encrypt) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color(0xFFFFF1E6), // 橙色背景
+                        ) {
+                            Text(
+                                "加密脚本",
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFD46B08), // 橙色文字
+                                fontSize = 9.sp,
+                            )
+                        }
+                    }
+                }
+
+                // 已安装插件的操作按钮
+                if (isInstalled) {
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        // 运行状态开关
+                        AssistChip(
+                            onClick = { onToggleRunning(!installedPlugin.running) },
+                            label = {
+                                Text(
+                                    if (installedPlugin.running) "运行中" else "已停止",
+                                    fontSize = 10.sp,
+                                )
+                            },
+                            leadingIcon = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(if (installedPlugin.running) SuccessColor else Color.Gray)
+                                )
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.height(28.dp),
+                        )
+
+                        // Debug 开关
+                        AssistChip(
+                            onClick = { onToggleDebug(!installedPlugin.debug) },
+                            label = {
+                                Text(
+                                    if (installedPlugin.debug) "调试" else "正常",
+                                    fontSize = 10.sp,
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.BugReport,
+                                    null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = if (installedPlugin.debug) MaterialTheme.colorScheme.tertiary else Color.Gray,
+                                )
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.height(28.dp),
+                        )
+
+                        // Disable 开关
+                        AssistChip(
+                            onClick = { onToggleDisable(!installedPlugin.disable) },
+                            label = {
+                                Text(
+                                    if (installedPlugin.disable) "已禁用" else "启用",
+                                    fontSize = 10.sp,
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    if (installedPlugin.disable) Icons.Filled.Block else Icons.Filled.CheckCircle,
+                                    null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = if (installedPlugin.disable) DangerColor else SuccessColor,
+                                )
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.height(28.dp),
+                        )
+
+                        // 配置表单按钮（仅当插件有表单时显示）
+                        if (installedPlugin.hasForm) {
+                            AssistChip(
+                                onClick = onConfigForm,
+                                label = { Text("配置", fontSize = 10.sp) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Settings,
+                                        null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.height(28.dp),
+                            )
+                        }
+
+                        // 异常消息按钮（仅当有消息时显示）
+                        if (plugin.messages.isNotEmpty()) {
+                            AssistChip(
+                                onClick = onShowMessages,
+                                label = {
+                                    Text(
+                                        "异常 ${plugin.messages.size}",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Warning,
+                                        null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.height(28.dp),
+                            )
+                        }
+
+                        // 卸载按钮
+                        AssistChip(
+                            onClick = onUninstall,
+                            label = { Text("卸载", fontSize = 10.sp) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.height(28.dp),
+                        )
+                    }
+                }
             }
-            FilledTonalButton(
-                onClick = onInstall,
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.height(34.dp),
+
+            // 右侧按钮：未安装显示安装
+            if (!isInstalled) {
+                FilledTonalButton(
+                    onClick = onInstall,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.height(34.dp),
+                ) {
+                    Text("安装", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 插件异常消息弹窗
+ */
+@Composable
+private fun PluginMessagesDialog(
+    plugin: com.sillygirl.client.data.model.PluginInfo,
+    onDismiss: () -> Unit,
+    onClear: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("异常收集 - ${plugin.title.ifBlank { plugin.id }}")
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("安装", style = MaterialTheme.typography.labelSmall)
+                items(plugin.messages.sortedByDescending { it.unix }) { message ->
+                    val timeStr = formatMessageTime(message.unix)
+                    val isWarn = message.messageClass == "warn"
+                    val dotColor = if (isWarn) Color(0xFFFAAD14) else MaterialTheme.colorScheme.error
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        // 时间线圆点
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(dotColor)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            // 时间
+                            Text(
+                                timeStr,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            // 版本标签
+                            if (message.version.isNotBlank()) {
+                                Spacer(Modifier.height(2.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = if (message.version == plugin.version)
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.errorContainer,
+                                ) {
+                                    Text(
+                                        message.version,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 9.sp,
+                                        color = if (message.version == plugin.version)
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onErrorContainer,
+                                    )
+                                }
+                            }
+                            // 内容
+                            if (message.content.isNotBlank()) {
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    message.content,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isWarn) Color(0xFFD48806) else MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onClear,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text("清空")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        },
+    )
+}
+
+/**
+ * 格式化消息时间戳
+ */
+private fun formatMessageTime(unix: Long): String {
+    if (unix <= 0) return ""
+    val cal = java.util.Calendar.getInstance()
+    cal.timeInMillis = unix * 1000
+    val now = java.util.Calendar.getInstance()
+
+    val hour = cal.get(java.util.Calendar.HOUR_OF_DAY).toString().padStart(2, '0')
+    val minute = cal.get(java.util.Calendar.MINUTE).toString().padStart(2, '0')
+    val second = cal.get(java.util.Calendar.SECOND).toString().padStart(2, '0')
+    val time = "$hour:$minute:$second"
+
+    return when {
+        cal.get(java.util.Calendar.YEAR) == now.get(java.util.Calendar.YEAR) &&
+            cal.get(java.util.Calendar.DAY_OF_YEAR) == now.get(java.util.Calendar.DAY_OF_YEAR) -> "今天 $time"
+        cal.get(java.util.Calendar.YEAR) == now.get(java.util.Calendar.YEAR) &&
+            cal.get(java.util.Calendar.DAY_OF_YEAR) == now.get(java.util.Calendar.DAY_OF_YEAR) - 1 -> "昨天 $time"
+        else -> {
+            val year = cal.get(java.util.Calendar.YEAR)
+            val month = (cal.get(java.util.Calendar.MONTH) + 1).toString().padStart(2, '0')
+            val day = cal.get(java.util.Calendar.DAY_OF_MONTH).toString().padStart(2, '0')
+            "$year-$month-$day $time"
+        }
+    }
+}
+
+/**
+ * 分页控件
+ */
+@Composable
+private fun PaginationWidget(
+    currentPage: Int,
+    totalPages: Int,
+    onPrevPage: () -> Unit,
+    onNextPage: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 上一页按钮
+            FilledTonalButton(
+                onClick = onPrevPage,
+                enabled = currentPage > 1,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.height(32.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+            ) {
+                Icon(
+                    Icons.Filled.ChevronLeft,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text("上一页", style = MaterialTheme.typography.labelSmall)
+            }
+
+            Spacer(Modifier.width(16.dp))
+
+            // 页码信息
+            Text(
+                "$currentPage / $totalPages",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+
+            Spacer(Modifier.width(16.dp))
+
+            // 下一页按钮
+            FilledTonalButton(
+                onClick = onNextPage,
+                enabled = currentPage < totalPages,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.height(32.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+            ) {
+                Text("下一页", style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
     }
@@ -537,8 +1289,8 @@ fun PluginDetailScreen(
                         )
                     }
 
-                    // 表单配置
-                    if (currentPlugin.hasForm && detailState.formFields.isNotEmpty()) {
+                    // 表单配置 — 只要有解析到的表单字段就显示
+                    if (detailState.formFields.isNotEmpty()) {
                         item {
                             PluginFormCard(
                                 fields = detailState.formFields,
@@ -996,8 +1748,13 @@ private class JavaScriptHighlightTransformation(
     )
 
     override fun filter(text: AnnotatedString): TransformedText {
-        val annotatedString = highlightJavaScript(text.text)
-        return TransformedText(annotatedString, OffsetMapping.Identity)
+        return try {
+            val annotatedString = highlightJavaScript(text.text)
+            TransformedText(annotatedString, OffsetMapping.Identity)
+        } catch (e: Exception) {
+            // 语法高亮出错时回退到原始文本，防止闪退
+            TransformedText(text, OffsetMapping.Identity)
+        }
     }
 
     private fun highlightJavaScript(code: String): AnnotatedString {
@@ -1021,7 +1778,7 @@ private class JavaScriptHighlightTransformation(
                     val start = i
                     i += 2
                     while (i < code.length - 1 && !(code[i] == '*' && code[i + 1] == '/')) i++
-                    i += 2 // skip */
+                    i = (i + 2).coerceAtMost(code.length) // skip */ or clamp to end
                     withStyle(SpanStyle(color = colors.comment, fontStyle = FontStyle.Italic)) {
                         append(code.substring(start, i))
                     }
@@ -1034,7 +1791,7 @@ private class JavaScriptHighlightTransformation(
                     val start = i
                     i++
                     while (i < code.length && code[i] != quote) {
-                        if (code[i] == '\\') i++ // 跳过转义字符
+                        if (code[i] == '\\' && i + 1 < code.length) i++ // 跳过转义字符
                         i++
                     }
                     if (i < code.length) i++ // 跳过结束引号

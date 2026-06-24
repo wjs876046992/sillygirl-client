@@ -278,6 +278,11 @@ Provided in `MainActivity.setContent {}`, consumed in `LoginScreen`, `SettingsSc
 4. `FeatureGrid` (3x2 grid) — 插件市场, 管理员, 存储, 服务, 定时任务
 5. Error banner (if error)
 
+**Features**:
+- **下拉刷新** - 支持下拉手势触发刷新，显示下拉进度指示器
+- 下拉超过阈值后松手自动刷新
+- 刷新时显示加载动画
+
 **Data loading**: Parallel fetch from `MasterRepository`, `TaskRepository`, `FenyongRepository`.
 
 ### 4.2 LoginScreen + LoginViewModel + AutoLoginScreen
@@ -350,22 +355,38 @@ Column {
 ### 4.5 PluginScreens + PluginViewModels
 
 **Three screens**:
-- `MyPluginsScreen` (`MyPluginsViewModel`) — installed plugins with search/filter
-- `PluginMarketScreen` (`PluginMarketViewModel`) — available plugins with install button
-- `PluginDetailScreen` (`MyPluginsViewModel`) — plugin detail with editor, debug/disable toggle, uninstall
+- `MyPluginsScreen` (`MyPluginsViewModel`) — installed plugins with search/filter and pagination
+- `PluginMarketScreen` (`PluginMarketViewModel`) — available plugins with install/config/uninstall/debug/disable and server-side filtering
+- `PluginDetailScreen` (`MyPluginsViewModel`) — plugin detail with editor, debug/disable toggle, uninstall, config form
 
 **UI States**:
-- `MyPluginsUiState(isLoading, error, plugins, snackbarMessage)`
+- `MyPluginsUiState(isLoading, error, plugins, snackbarMessage, currentPage, totalPages, total, pageSize, isLoadingMore)`
+- `PluginMarketUiState(isLoading, error, plugins, snackbarMessage, currentPage, totalPages, total, pageSize, isLoadingMore, availableOrigins, availableClasses)`
 - `PluginDetailUiState(isLoading, error, content, isSaving, isToggling, snackbarMessage)`
 
 **Features**:
 - MyPluginsScreen:
+  - **分页查询** - 支持分页加载已安装插件列表
   - Search bar (name/description/author fuzzy search)
   - Category filter chips (auto-collected from plugin classes)
   - Running status green dot indicator
   - Status badges: 已禁用(red), 调试(purple), 配置(blue)
   - Plugin count + running count header
   - Empty search result hint
+  - **PaginationWidget** - 上一页/下一页按钮 + 页码显示
+  - **列表页操作** - 每个插件卡片底部显示重载和卸载按钮
+  - **卸载确认** - 卸载操作带确认对话框，防止误操作
+  - **操作后刷新** - 卸载/重载成功后自动刷新首页 currentUser
+- PluginMarketScreen:
+  - **分页查询** - 支持分页加载可用插件列表（tab1=已安装, tab2=未安装, tab3=可升级）
+  - **服务端筛选** - `origin` 多选（数组），`class` 单选（字符串），`keyword` 搜索
+  - **可折叠筛选面板** - 分类筛选和来源筛选默认折叠，点击标题展开/收起，显示激活筛选数量角标
+  - **搜索栏** - 支持服务端关键词搜索
+  - **已安装插件操作** - 卸载、配置表单、禁用、debug、运行状态切换
+  - **未安装插件操作** - 安装按钮
+  - **配置表单入口** - 已安装且有表单的插件显示"配置"芯片，点击进入插件详情页
+  - **操作后刷新** - 安装/卸载成功后自动刷新首页 currentUser
+  - **PaginationWidget** - 上一页/下一页按钮 + 页码显示
 - PluginDetailScreen:
   - Plugin info card (title, description, version, author, origin tag, classes)
   - Running status indicator (green/gray/red)
@@ -434,7 +455,7 @@ Column {
 ### Plugins
 | Method | Path | Query/Body |
 |---|---|---|
-| GET | `/api/plugins/list.json` | `current`, `pageSize`, `activeKey` (tab1=installed, tab2=available) |
+| GET | `/api/plugins/list.json` | `current`, `pageSize`, `activeKey` (tab1=已安装, tab2=未安装/可安装, tab3=可升级), `class` (单选分类), `origin` (多选来源，数组), `keyword` (搜索). Response includes `classes: Map<String,Int>` and `origins: Map<String,String>` |
 | POST | `/api/plugins/run` | `{ name: string }` |
 | POST | `/api/plugins/stop` | `{ name: string }` |
 | POST | `/api/plugins/install` | `{ name: string }` |
@@ -659,6 +680,8 @@ See [PLUGIN_MANAGEMENT.md](PLUGIN_MANAGEMENT.md) for detailed design documentati
 ### ✅ Recently Fixed
 | # | Issue | Fix |
 |---|---|---|
+| 26 | ~~Plugin market missing server-side filtering~~ | Use API-provided `classes`/`origins` for filtering, add search bar |
+| 27 | ~~Plugin market missing config form entry~~ | Added "配置" chip for installed plugins with forms |
 | 8 | ~~MiniAppBar duplicated in 9 files~~ | Extracted to shared `AppComponents.kt` MiniAppBar |
 | 9 | ~~ImageCache bypasses Coil~~ | Migrated to Coil 3 global loader, deleted custom ImageCache |
 | 10 | ~~ServiceScreen placeholder~~ | Full implementation: add/edit/switch/delete servers |
