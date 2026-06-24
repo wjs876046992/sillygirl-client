@@ -75,14 +75,12 @@ fun AppNavGraph() {
     // 注册会话过期回调 — 任何 API 返回 401 时触发
     DisposableEffect(Unit) {
         RetrofitClient.onSessionExpired = {
-            // 在主线程处理导航（通过 coroutine）
+            // 在主线程处理状态重置（不直接导航，由 startRoute 逻辑处理）
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
                 currentUser = null
                 currentUserLoaded = false
                 isLoggedIn = false
-                navController.navigate(Routes.LOGIN) {
-                    popUpTo(0) { inclusive = true }
-                }
+                // 不再直接导航，由 startRoute 逻辑自动跳转到 SERVER_LIST
             }
         }
         onDispose {
@@ -98,45 +96,62 @@ fun AppNavGraph() {
             return@LaunchedEffect
         }
 
-        // 有服务器：先设置服务器地址
-        val server = defaultServer!!
-        RetrofitClient.setServer(server.url)
+        try {
+            // 有服务器：先设置服务器地址
+            val server = defaultServer!!
 
-        // 如果服务器无需认证，直接进入
-        if (!server.requiresAuth) {
-            RetrofitClient.token = null
-            isLoggedIn = true
-            isVerifying = false
-            return@LaunchedEffect
-        }
+            // 检查服务器 URL 是否有效
+            if (server.url.isBlank()) {
+                android.util.Log.e("AppNavGraph", "Server URL is blank, clearing server config")
+                isVerifying = false
+                hasServer = false
+                return@LaunchedEffect
+            }
 
-        // 尝试用保存的 token 验证
-        val savedToken = serverConfig.getToken()
-        if (savedToken == null) {
-            // 无 token，跳转到服务器列表让用户选择
-            // 不再自动登录，让用户主动选择
-            isLoggedIn = false
-            isVerifying = false
-            return@LaunchedEffect
-        }
+            RetrofitClient.setServer(server.url)
 
-        // 有 token，尝试验证
-        RetrofitClient.token = savedToken
-        withContext(Dispatchers.IO) {
-            authRepo.verifySession()
-        }.fold(
-            onSuccess = {
+            // 如果服务器无需认证，直接进入
+            if (!server.requiresAuth) {
+                RetrofitClient.token = null
                 isLoggedIn = true
                 isVerifying = false
-            },
-            onFailure = {
-                // token 过期，清除 token，跳转到服务器列表让用户重新选择
-                serverConfig.clearToken()
-                RetrofitClient.token = null
+                return@LaunchedEffect
+            }
+
+            // 尝试用保存的 token 验证
+            val savedToken = serverConfig.getToken()
+            if (savedToken == null) {
+                // 无 token，跳转到服务器列表让用户选择
                 isLoggedIn = false
                 isVerifying = false
+                return@LaunchedEffect
             }
-        )
+
+            // 有 token，尝试验证
+            RetrofitClient.token = savedToken
+            withContext(Dispatchers.IO) {
+                authRepo.verifySession()
+            }.fold(
+                onSuccess = {
+                    isLoggedIn = true
+                    isVerifying = false
+                },
+                onFailure = {
+                    // token 过期，清除 token，跳转到服务器列表让用户重新选择
+                    serverConfig.clearToken()
+                    RetrofitClient.token = null
+                    isLoggedIn = false
+                    isVerifying = false
+                }
+            )
+        } catch (e: Exception) {
+            // 捕获任何未预期的异常，防止闪退
+            android.util.Log.e("AppNavGraph", "Startup verification failed", e)
+            serverConfig.clearToken()
+            RetrofitClient.token = null
+            isLoggedIn = false
+            isVerifying = false
+        }
     }
 
     // 加载用户信息并缓存
@@ -281,17 +296,36 @@ fun AppNavGraph() {
             }
 
             composable(Routes.DASHBOARD) {
+                val serverDisplayUrl = remember {
+                    val url = RetrofitClient.currentServerUrl() ?: ""
+                    // 截取 host:port 部分作为显示
+                    try {
+                        val javaUrl = java.net.URL(url)
+                        javaUrl.host?.let { host ->
+                            val port = if (javaUrl.port > 0 && javaUrl.port != 80 && javaUrl.port != 443) ":${javaUrl.port}" else ""
+                            "$host$port"
+                        } ?: url
+                    } catch (_: Exception) {
+                        url
+                    }
+                }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
                     Column {
                         MiniAppBar(
-                            title = { Text("SillyGirl") },
-                            actions = {
-                                IconButton(onClick = {  /*reload*/  }) {
-                                    Icon(Icons.Filled.Refresh, "刷新")
+                            title = {
+                                Column {
+                                    Text("SillyGirl", style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        serverDisplayUrl,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
+                            },
+                            actions = {
                                 IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
                                     Icon(Icons.Filled.Settings, "设置")
                                 }

@@ -9,7 +9,6 @@ import com.sillygirl.client.data.model.PluginFormField
 import com.sillygirl.client.data.model.PluginRequest
 import com.sillygirl.client.data.model.PluginRoute
 import com.sillygirl.client.data.repository.PluginRepository
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,12 +54,7 @@ class MyPluginsViewModel : ViewModel() {
             _detailState.value = PluginDetailUiState(isLoading = true)
 
             try {
-                // 并行加载插件内容和表单值
-                val contentDeferred = async { repo.getPluginContent(uuid) }
-                val formValuesDeferred = async { repo.getPluginFormValues(uuid) }
-
-                val contentResult = contentDeferred.await()
-                val formValuesResult = formValuesDeferred.await()
+                val contentResult = repo.getPluginContent(uuid)
 
                 contentResult.fold(
                     onSuccess = { content ->
@@ -72,7 +66,17 @@ class MyPluginsViewModel : ViewModel() {
                             emptyList()
                         }
 
-                        val formValues = formValuesResult.getOrNull() ?: emptyMap()
+                        Log.d(TAG, "Parsed ${formFields.size} form fields from code: ${formFields.map { it.key }}")
+
+                        // 使用实际的表单字段 key 从 storage 获取值
+                        val fieldKeys = formFields.map { it.key }
+                        val formValues = if (fieldKeys.isNotEmpty()) {
+                            repo.getPluginFormValuesByKeys(fieldKeys).getOrNull() ?: emptyMap()
+                        } else {
+                            emptyMap()
+                        }
+
+                        Log.d(TAG, "Loaded ${formValues.size} form values from storage: $formValues")
 
                         // 将存储的值合并到表单字段中
                         val mergedFields = formFields.map { field ->
@@ -80,10 +84,7 @@ class MyPluginsViewModel : ViewModel() {
                             field.copy(value = storedValue ?: field.value)
                         }
 
-                        Log.d(TAG, "Parsed ${formFields.size} form fields from code")
-                        Log.d(TAG, "Loaded ${formValues.size} form values from storage")
-
-                        _detailState.value = PluginDetailUiState(
+                        _detailState.value = _detailState.value.copy(
                             isLoading = false,
                             content = content,
                             formFields = mergedFields,
@@ -185,14 +186,15 @@ class MyPluginsViewModel : ViewModel() {
         viewModelScope.launch {
             repo.getPluginDetail(uuid).fold(
                 onSuccess = { plugin ->
+                    Log.d(TAG, "Plugin detail loaded: running=${plugin.running}, disable=${plugin.disable}, debug=${plugin.debug}, hasForm=${plugin.hasForm}")
+                    // 只更新 pluginDetail，不覆盖已解析的 formFields
                     _detailState.value = _detailState.value.copy(
                         pluginDetail = plugin,
-                        formFields = plugin.formFields
                     )
                 },
                 onFailure = { e ->
                     // 如果获取详情失败，不影响主流程
-                    Log.e("MyPluginsViewModel", "Failed to load plugin detail", e)
+                    Log.e(TAG, "Failed to load plugin detail: ${e.message}")
                 },
             )
         }
@@ -203,9 +205,24 @@ class MyPluginsViewModel : ViewModel() {
             _detailState.value = _detailState.value.copy(isSaving = true)
             repo.savePluginFormValues(uuid, formData).fold(
                 onSuccess = {
+                    // 保存成功后，重新获取表单值以确保同步
+                    val fieldKeys = _detailState.value.formFields.map { it.key }
+                    val updatedValues = if (fieldKeys.isNotEmpty()) {
+                        repo.getPluginFormValuesByKeys(fieldKeys).getOrNull() ?: formData
+                    } else {
+                        formData
+                    }
+
+                    // 更新表单字段的值
+                    val updatedFields = _detailState.value.formFields.map { field ->
+                        val newValue = updatedValues[field.key]
+                        field.copy(value = newValue ?: field.value)
+                    }
+
                     _detailState.value = _detailState.value.copy(
                         isSaving = false,
-                        formValues = formData,
+                        formValues = updatedValues,
+                        formFields = updatedFields,
                         snackbarMessage = "表单配置已保存"
                     )
                 },

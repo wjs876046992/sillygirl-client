@@ -248,67 +248,56 @@ class PluginRepository {
     }
 
     /**
-     * 获取插件已配置的表单值
-     * 表单值存储在 plugin_form.{uuid} 中（JSON 字符串格式）
+     * 获取插件表单字段的值
+     * 通过 storage API 使用实际的表单字段 key 获取值
+     * 例如 keys=onebot.platform,onebot.token
      */
-    suspend fun getPluginFormValues(uuid: String): Result<Map<String, Any?>> {
+    suspend fun getPluginFormValuesByKeys(fieldKeys: List<String>): Result<Map<String, Any?>> {
+        if (fieldKeys.isEmpty()) return Result.success(emptyMap())
         return try {
-            val pluginId = uuid.asPluginId()
-            val keys = "plugin_form.$pluginId"
-            val response = RetrofitClient.api.getStorage(keys)
+            val keysParam = fieldKeys.joinToString(",")
+            val response = RetrofitClient.api.getStorage(keysParam)
             if (response.success) {
-                val data = response.data as? Map<*, *>
-                val jsonStr = data?.get(keys) as? String
-
+                val data = response.data as? Map<*, *> ?: emptyMap<String, Any?>()
                 val result = mutableMapOf<String, Any?>()
-                if (!jsonStr.isNullOrBlank()) {
-                    try {
-                        // 尝试解析 JSON 字符串为 Map
-                        val gson = com.google.gson.Gson()
-                        val jsonObj = gson.fromJson(jsonStr, com.google.gson.JsonObject::class.java)
-                        jsonObj?.entrySet()?.forEach { (key, value) ->
-                            result[key] = when {
-                                value.isJsonPrimitive -> {
-                                    val primitive = value.asJsonPrimitive
-                                    when {
-                                        primitive.isBoolean -> primitive.asBoolean
-                                        primitive.isNumber -> primitive.asNumber
-                                        else -> primitive.asString
-                                    }
-                                }
-                                value.isJsonNull -> null
-                                else -> value.toString()
+                fieldKeys.forEach { key ->
+                    val value = data[key]
+                    result[key] = when {
+                        value is Boolean -> value
+                        value is Number -> value
+                        value is String -> {
+                            // 尝试解析字符串值
+                            when {
+                                value.equals("true", ignoreCase = true) -> true
+                                value.equals("false", ignoreCase = true) -> false
+                                value.toDoubleOrNull() != null -> value.toDouble()
+                                else -> value
                             }
                         }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to parse form JSON: $jsonStr", e)
+                        else -> value
                     }
                 }
-                Log.d(TAG, "Loaded form values for $pluginId: $result")
+                Log.d(TAG, "Loaded form values by keys: $result")
                 Result.success(result)
             } else {
+                Log.w(TAG, "Failed to get storage for keys: $keysParam")
                 Result.success(emptyMap())
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get form values", e)
+            Log.e(TAG, "Failed to get form values by keys", e)
             Result.success(emptyMap())
         }
     }
 
     /**
      * 保存插件表单配置值
-     * 表单值存储在 plugin_form.{uuid} 中
+     * 直接使用实际的表单字段 key 保存到 storage
      */
     suspend fun savePluginFormValues(uuid: String, values: Map<String, Any?>): Result<Unit> {
         return try {
             val pluginId = uuid.asPluginId()
-            // 将表单值转为 JSON 字符串存储
-            val jsonValue = try {
-                com.google.gson.Gson().toJson(values)
-            } catch (e: Exception) {
-                values.toString()
-            }
-            val body = mapOf("plugin_form.$pluginId" to jsonValue)
+            // 将值转为字符串 Map
+            val body = values.mapValues { it.value?.toString() ?: "" }
             val response = RetrofitClient.api.saveStorage(pluginId, body)
             if (response.success) {
                 Log.d(TAG, "Saved form values for $pluginId: $values")
