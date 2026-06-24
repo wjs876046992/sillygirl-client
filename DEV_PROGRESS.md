@@ -1,5 +1,48 @@
 # sillygirl-client 开发进展
 
+## 2026-06-24 第四次会话完成的工作
+
+### 一、修复切换服务器失败选中错误的问题
+
+**问题描述：**
+- 用户尝试切换服务器时，如果登录失败，客户端会指向错误的服务器
+- 原因：`authRepo.login()` 内部调用 `RetrofitClient.setServer(serverUrl)`，即使登录失败，客户端已经指向新服务器
+
+**解决方案：**
+- 切换前保存原始服务器地址 `originalUrl = currentUrl.value`
+- 登录失败时调用 `RetrofitClient.setServer(originalUrl)` 恢复
+- 成功时才更新 `currentUrl.value` 和 `setDefaultIndex`
+
+### 二、添加服务编辑功能
+
+**问题描述：**
+- 服务管理只有添加/删除/切换功能，无法编辑已有服务器信息
+
+**解决方案：**
+- ServiceCard 新增编辑按钮（铅笔图标）
+- 新增 `EditServiceDialog`，预填充当前服务器信息（地址、别名、用户名、密码）
+- 编辑保存后，如果是当前服务器，同步更新 `RetrofitClient` 的地址
+
+### 三、移除测试服务器硬编码
+
+**问题描述：**
+- APK 内置了测试服务器 `http://192.168.1.12:8081` 及其凭证
+- 用户无法选择其他服务器
+
+**解决方案：**
+- 移除 `MainActivity.kt` 中自动添加测试服务器的代码
+- 用户首次使用需要手动添加服务器
+
+### 修改文件清单
+
+| 文件 | 修改内容 |
+|------|----------|
+| `ServiceScreen.kt` | 添加编辑功能，修复切换失败bug |
+| `MainActivity.kt` | 移除测试服务器硬编码 |
+| `PROJECT_SUMMARY.md` | 更新文档 |
+
+---
+
 ## 2026-06-24 第三次会话完成的工作
 
 ### 一、插件编辑器代码高亮
