@@ -1,5 +1,45 @@
 # sillygirl-client 开发进展
 
+## 2026-06-25 第十一次会话完成的工作
+
+### 一、修复后台切回后登录状态丢失
+
+**问题描述：**
+- App 后台运行中再打开，登录状态丢失，跳转到服务器列表
+- Token 有效期为 1 天（`Max-Age=86400`），后台短暂运行不应导致 token 过期
+
+**根因分析：**
+- `AppNavGraph.kt` 中有三处在 API 调用失败时**无条件清除 token**：
+  1. `verifySession()` 的 `onFailure` 回调
+  2. `loadCurrentUser()` 的 `catch` 块
+  3. 外层 `catch` 块
+- App 进程被系统回收后重建时，CookieManager 内存 Cookie 丢失，且后台切前台瞬间网络可能尚未就绪
+- 此时 `getCurrentUser()` 抛出 `SocketTimeoutException` / `IOException`，被无条件当作 token 过期处理，直接清除了有效 token
+
+**解决方案：**
+
+1. **区分认证失败与网络错误**
+   - 仅在 `retrofit2.HttpException` 且状态码为 401/403 时清除 token
+   - 网络超时、DNS 解析失败等瞬时错误保留 token，允许用户进入 Dashboard 后通过下拉刷新重试
+
+2. **加载 currentUser 失败时不清除 token**
+   - 移除 `loadCurrentUser` catch 块中的 `clearToken` / `isLoggedIn=false`
+   - 不自动重试（避免无限循环），由用户通过刷新按钮或下拉刷新手动重试
+
+3. **外层 catch 同样区分错误类型**
+   - 401/403 → 清 token + 跳转服务器列表
+   - 其他 → 保留 token + 进入 Dashboard
+
+**修改文件：**
+| 文件 | 修改内容 |
+|------|----------|
+| `AppNavGraph.kt` | 三处错误处理改为区分 401/403 vs 网络错误，仅认证失败时清除 token |
+
+**已知微小瑕疵：**
+- token 真过期（401）时，`sessionInterceptor` 在后台线程清 token 并 post `onSessionExpired` 回调到 Main，同时 `onFailure` 设 `isLoggedIn = true`，可能闪一下 Dashboard 再跳转到服务器列表（毫秒级），不影响功能。
+
+---
+
 ## 2026-06-24 第十次会话完成的工作
 
 ### 一、重载和卸载增加确认提示

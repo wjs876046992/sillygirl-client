@@ -150,20 +150,36 @@ fun AppNavGraph() {
                     isLoggedIn = true
                     isVerifying = false
                 },
-                onFailure = {
-                    // token 过期，清除 token，跳转到服务器列表让用户重新选择
-                    serverConfig.clearToken()
-                    RetrofitClient.token = null
-                    isLoggedIn = false
+                onFailure = { e ->
+                    // 仅在认证失败(401/403)时清除 token，网络错误等瞬时问题保留 token
+                    val isAuthFailure = e is retrofit2.HttpException &&
+                        (e.code() == 401 || e.code() == 403)
+                    if (isAuthFailure) {
+                        android.util.Log.w("AppNavGraph", "Token expired (HTTP ${e.code()}), clearing")
+                        serverConfig.clearToken()
+                        RetrofitClient.token = null
+                        isLoggedIn = false
+                    } else {
+                        // 网络错误/超时等瞬时问题：保留 token，仍尝试进入 Dashboard
+                        android.util.Log.w("AppNavGraph", "Verify failed (${e::class.simpleName}: ${e.message}), keeping token")
+                        isLoggedIn = true
+                    }
                     isVerifying = false
                 }
             )
         } catch (e: Exception) {
             // 捕获任何未预期的异常，防止闪退
+            // 仅认证失败时清除 token，其他错误保留 token
             android.util.Log.e("AppNavGraph", "Startup verification failed", e)
-            serverConfig.clearToken()
-            RetrofitClient.token = null
-            isLoggedIn = false
+            val isAuthFailure = e is retrofit2.HttpException && (e.code() == 401 || e.code() == 403)
+            if (isAuthFailure) {
+                serverConfig.clearToken()
+                RetrofitClient.token = null
+                isLoggedIn = false
+            } else {
+                // 网络错误等：保留 token，让用户进入 Dashboard 后可刷新重试
+                isLoggedIn = true
+            }
             isVerifying = false
         }
     }
@@ -190,21 +206,16 @@ fun AppNavGraph() {
                     if (response.success && response.data != null) {
                         currentUser = response.data
                     } else {
-                        // 用户信息加载失败，可能 token 已过期
+                        // API 返回 success=false — 可能 token 过期或服务端问题
+                        // 不清除 token，不自动重试（避免无限循环）
+                        // 用户可通过 Dashboard 下拉刷新或点击刷新按钮重试
                         android.util.Log.e("AppNavGraph", "Failed to load user info: success=${response.success}")
-                        serverConfig.clearToken()
-                        RetrofitClient.token = null
                         currentUser = null
-                        currentUserLoaded = false
-                        isLoggedIn = false
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e("AppNavGraph", "Exception loading user info", e)
-                    serverConfig.clearToken()
-                    RetrofitClient.token = null
-                    currentUser = null
-                    currentUserLoaded = false
-                    isLoggedIn = false
+                    android.util.Log.e("AppNavGraph", "Exception loading user info (${e::class.simpleName}: ${e.message})")
+                    // 网络错误等瞬时问题：保留 token，不退出登录
+                    // 用户可通过 Dashboard 下拉刷新重试
                 }
             }
         }

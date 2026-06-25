@@ -681,6 +681,7 @@ See [PLUGIN_MANAGEMENT.md](PLUGIN_MANAGEMENT.md) for detailed design documentati
 ### ✅ Recently Fixed
 | # | Issue | Fix |
 |---|---|---|
+| 28 | ~~**后台切回后登录状态丢失**~~ | 区分 401/403 与网络错误，仅认证失败时清除 token |
 | 26 | ~~Plugin market missing server-side filtering~~ | Use API-provided `classes`/`origins` for filtering, add search bar |
 | 27 | ~~Plugin market missing config form entry~~ | Added "配置" chip for installed plugins with forms |
 | 8 | ~~MiniAppBar duplicated in 9 files~~ | Extracted to shared `AppComponents.kt` MiniAppBar |
