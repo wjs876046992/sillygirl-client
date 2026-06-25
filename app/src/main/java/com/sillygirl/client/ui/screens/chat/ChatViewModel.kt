@@ -119,13 +119,26 @@ class ChatViewModel : ViewModel() {
         val content = state.message.trim()
         if (content.isBlank()) return
 
+        // 获取选中用户的信息
+        val selectedUser = state.filteredUsers.find { it.value == state.selectedUserId }
+        val isGroupFriend = selectedUser?.src == "group"
+        val sourceChats = selectedUser?.src_chats ?: emptyList()
+
         viewModelScope.launch {
             _uiState.update { it.copy(isSending = true, lastResult = null) }
             repository.sendMessage(
                 platform = platform,
                 botId = state.selectedBot ?: "",
                 userId = if (!state.isGroup) (state.selectedUserId ?: "") else "",
-                chatId = if (state.isGroup) (state.selectedChatId ?: "") else "",
+                chatId = if (state.isGroup) {
+                    state.selectedChatId ?: ""
+                } else if (isGroupFriend && sourceChats.isNotEmpty()) {
+                    // 群好友：使用第一个来源群ID发送临时会话
+                    // TODO: 如果有多个群，可以让用户选择
+                    sourceChats.first()
+                } else {
+                    ""
+                },
                 content = content,
             ).fold(
                 onSuccess = { result ->

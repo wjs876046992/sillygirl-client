@@ -421,6 +421,8 @@ data class NameLabel(
     val label: String = "",
     val value: String = "",
     val platform: String = "",
+    val src: String = "",           // 来源: private(私聊), group(群聊)
+    val src_chats: List<String> = emptyList(), // 来源群ID列表（group时有值）
 )
 
 data class SendMessageRequest(
