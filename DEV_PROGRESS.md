@@ -1040,3 +1040,78 @@ chmod +x sillyplus
 分佣功能需要MongoDB，配置项：
 - `fanli.mongodb` - MongoDB连接字符串
 - 格式: `mongodb://username:password@host:port/database`
+
+---
+
+## 2026-06-25 第十五次会话完成的工作
+
+### 一、Dashboard 分佣 API 重构（后端）
+
+**问题描述：**
+- 原 dashboard API 只返回扁平的时间维度和平台维度，缺少 site × 时间的交叉数据
+- 原 `fgPeriod`/`fgPlatform` 的 BSON tag 写成 `"count"` 而 `$group` 输出字段名为 `"orders"`，导致订单数始终为 0
+
+**解决方案：**
+
+1. **类型重构**
+   - 删除 `FenyongPlatformStats`、`FenyongPeriodStats`，统一为 `FenyongStats{Orders, Estimate, Actual}`
+   - 新增 `FenyongCrossItem{Site, Period, Orders, Estimate, Actual}` 表示交叉统计
+   - `FenyongDashboard` 改为 `{Success, ByTime, BySite, Cross}`
+
+2. **聚合管道**
+   - 单次 `$facet` 查询同时完成三个维度聚合：
+     - `by_time`: today / last7days / lastMonth / all_time
+     - `by_site`: 按 `$site` 分组
+     - `cross`: `$addFields` 按 created_time 归类时段 → `$match` 过滤 → `$group` 按 site+period 分组 → `$project` 扁平化
+   - 修复 BSON tag：`fgPeriod.Count` → `fgPeriod.Orders`（`bson:"orders"`）
+
+**返回结构：**
+```json
+{
+  "by_time": { "today": {...}, "last7days": {...}, "lastMonth": {...}, "total": {...} },
+  "by_site": { "jd": {...}, "tb": {...}, "pdd": {...}, "total": {...} },
+  "cross": [
+    { "site": "jd", "period": "today", "orders": 5, "estimate": 10.5, "actual": 8.2 },
+    ...
+  ]
+}
+```
+
+### 二、Dashboard 分佣 UI 重构（前端）
+
+**问题描述：**
+- 原 dashboard 分佣卡片只显示简单的三列时间维度数据，信息密度低
+- 需要展示 site × 时间 的交叉表格，同时显示预估佣金和实际佣金
+
+**解决方案：**
+
+1. **Models.kt**
+   - 新增 `FenyongCrossItem` 数据类
+   - `FenyongDashboardResponse` 新增 `cross: List<FenyongCrossItem>` 字段
+   - 删除旧的 `FenyongPeriodStats`、`FenyongPlatformStats`
+
+2. **DashboardScreen.kt — FenyongOverviewCard 三板块布局**
+   - **板块① 全部金额总览**：全部预估 / 全部实际 / 总订单（灰色背景卡片）
+   - **板块② 交叉表格**：3行(京东/淘宝/拼多多) × 3列(今日/7天/本月) + 合计行，使用 `weight(1f)` 自适应宽度，无需滚动
+   - **板块③ 平台汇总卡片**：每个平台一张小卡片，显示名称/预估/实际/订单数，平台色背景
+
+3. **AppNavGraph.kt — 导航栏调整**
+   - `MiniAppBar` 标题从 "SillyGirl" 改为 "傻妞平台管理助手 · 用户名"
+   - 移除 Dashboard 中的 `WelcomeHeader` 欢迎面板
+
+### 三、部署
+
+- 通过 `deploy-test.sh` 部署到测试服务器 `192.168.1.12:8081`
+- 流程：构建 linux amd64 二进制 → SCP 上传 → SSH 执行 PM2 restart → 健康检查 HTTP 200
+
+**修改文件汇总：**
+
+| 仓库 | 文件 | 修改内容 |
+|------|------|----------|
+| sillyGirl | `core/fenyong_api.go` | 类型重构 + cross 聚合管道 + 修复 BSON tag |
+| sillyGirl | `deploy-test.sh` | 部署脚本 |
+| sillygirl-client | `Models.kt` | 新增 FenyongCrossItem，更新 DashboardResponse |
+| sillygirl-client | `DashboardScreen.kt` | 三板块布局 + 删除 WelcomeHeader |
+| sillygirl-client | `AppNavGraph.kt` | 导航栏标题改名 + 显示用户名 |
+| sillygirl-client | `FenyongRepository.kt` | 日志字段更新 |
+| sillygirl-client | `SillyGirlApi.kt` | API 注释更新 |
