@@ -29,6 +29,8 @@ import com.sillygirl.client.data.model.UserData
 import com.sillygirl.client.ui.components.*
 import com.sillygirl.client.ui.theme.*
 
+private val GrayText = Color(0xFF999999)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -138,8 +140,6 @@ fun DashboardScreen(
                     }
                 }
 
-                item { WelcomeHeader(name = name) }
-
                 item {
                     FenyongOverviewCard(uiState.fenyongDashboard, onNavigateToFenyong)
                 }
@@ -219,59 +219,6 @@ fun DashboardScreen(
     }
 }
 
-// ===== 欢迎 =====
-@Composable
-private fun WelcomeHeader(name: String) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .themeShadow(8.dp, RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Brush.horizontalGradient(PrimaryGradientColors))
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(70.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.07f))
-                    .align(Alignment.TopEnd)
-                    .offset(x = 14.dp, y = (-14).dp)
-            )
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.05f))
-                    .align(Alignment.BottomEnd)
-                    .offset(x = (-10).dp, y = 10.dp)
-            )
-
-            Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-            ) {
-                Text(
-                    "你好，$name",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "SillyGirl 管理助手",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.75f),
-                )
-            }
-        }
-    }
-}
-
 @Composable
 private fun MetricGridCard(
     icon: ImageVector,
@@ -308,32 +255,37 @@ private fun MetricGridCard(
     }
 }
 
-@Composable
-private fun FixedSiteCard(siteName: String, amount: String, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .height(48.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(siteName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
-            Spacer(Modifier.height(2.dp))
-            Text(amount, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        }
-    }
+// ===== 平台 key → 中文名 =====
+private fun platformDisplayName(code: String): String = when (code.lowercase()) {
+    "jd" -> "京东"
+    "tb" -> "淘宝"
+    "pdd" -> "拼多多"
+    else -> code
 }
 
-// ===== 分佣概览 =====
+// ===== 分佣概览（三板块：总额 / 交叉表格 / 平台卡片） =====
 @Composable
 private fun FenyongOverviewCard(dash: com.sillygirl.client.data.model.FenyongDashboardResponse?, onClick: () -> Unit) {
     if (dash == null) return
 
+    val byTime = dash.byTime
+    val bySite = dash.bySite
+    val cross = dash.cross
+
+    // 构建交叉查找表 crossLookup[site][period] → FenyongCrossItem
+    val crossLookup = cross.groupBy({ it.site }, { it.period to it })
+        .mapValues { (_, v) -> v.toMap() }
+
+    // 行列定义
+    val periods = listOf("today" to "今日", "last7days" to "7天", "lastMonth" to "本月")
+    val sites = listOf("jd", "tb", "pdd")
+    val siteLabels = sites.map { platformDisplayName(it) }
+
     GlassCard(
         onClick = onClick,
-        modifier = Modifier.widthIn(min = 120.dp).heightIn(min = 130.dp),
+        modifier = Modifier.widthIn(min = 120.dp),
     ) {
+        // ── 标题栏 ──
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -360,43 +312,174 @@ private fun FenyongOverviewCard(dash: com.sillygirl.client.data.model.FenyongDas
             )
         }
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        Spacer(Modifier.height(10.dp))
+
+        // ── 板块① 全部金额总览 ──
+        val grandTotal = byTime["total"] ?: com.sillygirl.client.data.model.FenyongStats()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                .padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("今日", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                Text("全部预估", style = MaterialTheme.typography.labelSmall, color = GrayText)
                 Spacer(Modifier.height(2.dp))
-                Text(feyMoney(dash.today.estimate), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text("¥${feyMoney(grandTotal.estimate)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("7天", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                Text("全部实际", style = MaterialTheme.typography.labelSmall, color = GrayText)
                 Spacer(Modifier.height(2.dp))
-                Text(feyMoney(dash.last7days.estimate), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text("¥${feyMoney(grandTotal.actual)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = SuccessColor)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("本月", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                Text("总订单", style = MaterialTheme.typography.labelSmall, color = GrayText)
                 Spacer(Modifier.height(2.dp))
-                Text(feyMoney(dash.lastMonth.estimate), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text("${grandTotal.orders}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             }
         }
 
-        val sites = dash.platforms.entries.toList()
-        if (sites.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(8.dp))
-            val chunks = sites.chunked(3)
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (chunk in chunks) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        for ((i, site) in chunk.withIndex()) {
-                            val (siteName, stats) = site
-                            FixedSiteCard(siteName, feyMoney(stats.estimate), modifier = Modifier.weight(1f))
-                            if (i < chunk.lastIndex) Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.height(12.dp))
+
+        // ── 板块② 交叉表格（可左右滚动） ──
+        Text("佣金明细", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.height(6.dp))
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // 表头行
+            Row(modifier = Modifier.fillMaxWidth()) {
+                // 左上角空格
+                Box(modifier = Modifier.width(42.dp).height(28.dp))
+                // 列标题
+                for ((_, label) in periods) {
+                    Box(
+                        modifier = Modifier.weight(1f).height(28.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+
+            // 数据行（各平台）
+            for ((siteIdx, siteKey) in sites.withIndex()) {
+                val siteStats = bySite[siteKey]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (siteIdx % 2 == 0) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
+                        .padding(vertical = 2.dp),
+                ) {
+                    // 行标题
+                    Box(modifier = Modifier.width(42.dp).height(48.dp), contentAlignment = Alignment.CenterStart) {
+                        Text(siteLabels[siteIdx], style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    // 各时段
+                    for ((periodKey, _) in periods) {
+                        val item = crossLookup[siteKey]?.get(periodKey)
+                        Box(modifier = Modifier.weight(1f).height(48.dp), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "¥${feyMoney(item?.estimate ?: 0.0)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                Text(
+                                    "¥${feyMoney(item?.actual ?: 0.0)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = SuccessColor,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 分隔线 + 合计行
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            val totalRow = periods.associate { (key, _) -> key to (byTime[key] ?: com.sillygirl.client.data.model.FenyongStats()) }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
+                    .padding(vertical = 2.dp),
+            ) {
+                Box(modifier = Modifier.width(42.dp).height(48.dp), contentAlignment = Alignment.CenterStart) {
+                    Text("合计", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                }
+                for ((periodKey, _) in periods) {
+                    val cell = totalRow[periodKey]
+                    Box(modifier = Modifier.weight(1f).height(48.dp), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "¥${feyMoney(cell?.estimate ?: 0.0)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                "¥${feyMoney(cell?.actual ?: 0.0)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = SuccessColor,
+                            )
                         }
                     }
                 }
             }
         }
+        val siteEntries = bySite.filter { it.key != "total" }.entries.toList()
+        if (siteEntries.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            Text("平台汇总", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                for ((i, entry) in siteEntries.withIndex()) {
+                    val (siteKey, stats) = entry
+                    SiteSummaryCard(
+                        siteCode = siteKey,
+                        estimate = stats.estimate,
+                        actual = stats.actual,
+                        orders = stats.orders,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
     }
+}
+
+// ===== 平台汇总小卡片 =====
+@Composable
+private fun SiteSummaryCard(siteCode: String, estimate: Double, actual: Double, orders: Int, modifier: Modifier = Modifier) {
+    val color = getSiteColor(siteCode)
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(color.copy(alpha = 0.08f))
+            .padding(vertical = 10.dp, horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(platformDisplayName(siteCode), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = color)
+        Text("¥${feyMoney(estimate)}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text("¥${feyMoney(actual)}", style = MaterialTheme.typography.labelSmall, color = SuccessColor)
+        Text("${orders}单", style = MaterialTheme.typography.labelSmall, color = GrayText)
+    }
+}
+
+@Composable
+private fun getSiteColor(siteCode: String): Color = when (siteCode.lowercase()) {
+    "jd" -> Color(0xFFE60012)
+    "tb" -> Color(0xFFFF5000)
+    "pdd" -> Color(0xFFE02A24)
+    else -> MaterialTheme.colorScheme.primary
 }
 
 // ===== 功能网格 =====

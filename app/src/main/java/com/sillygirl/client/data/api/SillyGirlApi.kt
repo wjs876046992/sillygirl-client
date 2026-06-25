@@ -44,7 +44,7 @@ interface SillyGirlApi {
     suspend fun uninstallPlugin(@Body body: PluginRequest): ApiResponse<Any>
 
     // ===== Fenyong =====
-    // GET /api/fenyong/dashboard — returns { success, today, yesterday, last7days, lastMonth, platforms, total_settled, total_unsettled, total_orders }
+    // GET /api/fenyong/dashboard — returns { success, by_time: {today, last7days, lastMonth, total}, by_site: {jd, tb, pdd, total} }
     @GET("api/fenyong/dashboard")
     suspend fun getFenyongDashboard(): FenyongDashboardResponse
 

@@ -360,7 +360,16 @@ fun AppNavGraph() {
                         MiniAppBar(
                             title = {
                                 Column {
-                                    Text("SillyGirl", style = MaterialTheme.typography.bodyMedium)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("傻妞平台管理助手", style = MaterialTheme.typography.bodyMedium)
+                                        currentUser?.name?.takeIf { it.isNotBlank() }?.let { userName ->
+                                            Text(
+                                                "  ·  $userName",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
                                     Text(
                                         serverDisplayUrl,
                                         style = MaterialTheme.typography.labelSmall,

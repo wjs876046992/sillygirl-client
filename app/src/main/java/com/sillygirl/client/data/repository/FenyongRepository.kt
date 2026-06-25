@@ -14,7 +14,7 @@ class FenyongRepository {
     suspend fun getDashboard(): Result<FenyongDashboardResponse> {
         return try {
             val response = RetrofitClient.api.getFenyongDashboard()
-            Log.d(TAG, "Dashboard loaded: success=${response.success}, today=${response.today}, platforms=${response.platforms}")
+            Log.d(TAG, "Dashboard loaded: success=${response.success}, byTime=${response.byTime.keys}, bySite=${response.bySite.keys}")
             Result.success(response)
         } catch (e: Exception) {
             Log.e(TAG, "Dashboard failed", e)

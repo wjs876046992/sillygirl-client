@@ -139,18 +139,20 @@ data class PluginMessage(
 // ===== Fenyong =====
 
 /**
- * 统计周期数据（dashboard 中 today/yesterday/last7days/lastMonth 的结构）
+ * 统一的佣金统计数据（by_time / by_site 各项共用）
  */
-data class FenyongPeriodStats(
+data class FenyongStats(
     val orders: Int = 0,
     val estimate: Double = 0.0,
     val actual: Double = 0.0,
 )
 
 /**
- * 平台统计（dashboard 中 platforms 的结构）
+ * site × 时段 交叉统计项
  */
-data class FenyongPlatformStats(
+data class FenyongCrossItem(
+    val site: String = "",
+    val period: String = "",
     val orders: Int = 0,
     val estimate: Double = 0.0,
     val actual: Double = 0.0,
@@ -158,17 +160,15 @@ data class FenyongPlatformStats(
 
 /**
  * dashboard API 返回（/api/fenyong/dashboard）
+ * by_time: today / last7days / lastMonth / total
+ * by_site: jd / tb / pdd / total
+ * cross: site × period 交叉明细
  */
 data class FenyongDashboardResponse(
     val success: Boolean = false,
-    val today: FenyongPeriodStats = FenyongPeriodStats(),
-    val yesterday: FenyongPeriodStats = FenyongPeriodStats(),
-    val last7days: FenyongPeriodStats = FenyongPeriodStats(),
-    val lastMonth: FenyongPeriodStats = FenyongPeriodStats(),
-    @SerializedName("platforms") val platforms: Map<String, FenyongPlatformStats> = emptyMap(),
-    @SerializedName("total_settled") val totalSettled: Double = 0.0,
-    @SerializedName("total_unsettled") val totalUnsettled: Double = 0.0,
-    @SerializedName("total_orders") val totalOrders: Int = 0,
+    @SerializedName("by_time") val byTime: Map<String, FenyongStats> = emptyMap(),
+    @SerializedName("by_site") val bySite: Map<String, FenyongStats> = emptyMap(),
+    val cross: List<FenyongCrossItem> = emptyList(),
 )
 
 /**
@@ -237,7 +237,7 @@ data class FenyongOrderContent(
 data class FenyongBind(
     val platform: String = "",
     @SerializedName("user_id") val userId: String = "",
-    val nickname: String = "",
+    @SerializedName("user_name") val userName: String = "",
 )
 
 data class FenyongTab(

@@ -300,12 +300,14 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
                                 Spacer(modifier = Modifier.width(2.dp))
                                 val platformLabel = order.bind.platform.takeIf { it.isNotBlank() }
                                     ?.let { getPlatformName(it) } ?: ""
-                                val userName = order.bind.nickname.takeIf { it.isNotBlank() }
+                                val userName = order.bind.userName.takeIf { it.isNotBlank() }
                                     ?: order.bind.userId
                                 Text(
                                     if (platformLabel.isNotBlank()) "$platformLabel $userName" else userName,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         }
