@@ -6,20 +6,26 @@
 
 **问题描述：**
 - 分佣订单列表中需要显示绑定用户信息
-- 绑定信息在 API 返回值的 `bind` 字段中，包含 `platform` 和 `userId`
+- 绑定信息在 API 返回值的 `bind` 字段中，包含 `platform`、`userId` 和 `nickname`
 - 需要兼容 `bind` 为 null 的情况
 
 **解决方案：**
 
-1. **UI 修改**
-   - 在订单状态标签旁增加绑定用户 ID 显示
-   - 使用 `Icons.Filled.Person` 图标 + 用户 ID 文本
-   - 背景使用 `primaryContainer` 颜色，与状态标签风格统一
+1. **Models.kt 数据模型更新**
+   - `FenyongBind` 新增 `nickname: String` 字段（与后端 `json:"nickname,omitempty"` 对应）
+
+2. **UI 修改**
+   - 在订单状态标签旁增加绑定用户信息显示
+   - 格式：`渠道名 + 用户名`（如 "微信 张三"）
+   - 用户名优先使用 `nickname`，无昵称时使用 `userId`
+   - 无平台信息时仅显示用户名
+   - 使用 `Icons.Filled.Person` 图标 + 文本，背景 `primaryContainer` 颜色
    - 仅当 `bind` 不为 null 且 `userId` 不为空时显示
 
 **修改文件：**
 | 文件 | 修改内容 |
 |------|----------|
+| `Models.kt` | FenyongBind 新增 nickname 字段 |
 | `FenyongScreen.kt` | OrderItemCard 中状态标签旁增加绑定用户信息显示 |
 
 ---
