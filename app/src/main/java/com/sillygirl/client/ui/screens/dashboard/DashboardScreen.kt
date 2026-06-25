@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -343,7 +344,7 @@ private fun FenyongOverviewCard(dash: com.sillygirl.client.data.model.FenyongDas
 
         Spacer(Modifier.height(12.dp))
 
-        // ── 板块② 交叉表格（可左右滚动） ──
+        // ── 板块② 交叉表格 ──
         Text("佣金明细", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(6.dp))
 
@@ -383,12 +384,14 @@ private fun FenyongOverviewCard(dash: com.sillygirl.client.data.model.FenyongDas
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     "¥${feyMoney(item?.estimate ?: 0.0)}",
+                                    textAlign = TextAlign.Center,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
                                 Text(
                                     "¥${feyMoney(item?.actual ?: 0.0)}",
+                                    textAlign = TextAlign.Center,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = SuccessColor,
                                 )
@@ -416,12 +419,14 @@ private fun FenyongOverviewCard(dash: com.sillygirl.client.data.model.FenyongDas
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 "¥${feyMoney(cell?.estimate ?: 0.0)}",
+                                textAlign = TextAlign.Center,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary,
                             )
                             Text(
                                 "¥${feyMoney(cell?.actual ?: 0.0)}",
+                                textAlign = TextAlign.Center,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = SuccessColor,
