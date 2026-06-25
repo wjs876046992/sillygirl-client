@@ -1115,3 +1115,29 @@ chmod +x sillyplus
 | sillygirl-client | `AppNavGraph.kt` | 导航栏标题改名 + 显示用户名 |
 | sillygirl-client | `FenyongRepository.kt` | 日志字段更新 |
 | sillygirl-client | `SillyGirlApi.kt` | API 注释更新 |
+
+---
+
+## 2026-06-25 第十六次会话完成的工作
+
+### 一、导航栏标题改名 + 移除欢迎面板
+
+- `MiniAppBar` 标题从 "SillyGirl" 改为 "傻妞平台管理助手 · 用户名"
+- Dashboard 中删除 `WelcomeHeader` 欢迎面板及其函数
+
+### 二、佣金明细表格内容居中
+
+- 表格数据单元格和合计行的 Text 组件添加 `textAlign = TextAlign.Center`
+- 确保金额数值在单元格内水平居中显示
+
+### 三、后端修复订单数始终为0的bug
+
+- `fgPeriod`/`fgPlatform` 的 BSON tag 从 `bson:"count"` 改为 `bson:"orders"`，与 `$group` 输出字段名一致
+
+**修改文件汇总：**
+
+| 仓库 | 文件 | 修改内容 |
+|------|------|----------|
+| sillygirl-client | `AppNavGraph.kt` | 导航栏标题改名 + 显示用户名 |
+| sillygirl-client | `DashboardScreen.kt` | 删除 WelcomeHeader + 表格内容 textAlign 居中 |
+| sillyGirl | `core/fenyong_api.go` | BSON tag count→orders 修复 |
