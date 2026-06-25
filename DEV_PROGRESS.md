@@ -1,5 +1,60 @@
 # sillygirl-client 开发进展
 
+## 2026-06-25 第十三次会话完成的工作
+
+### 一、迁移设置页面基础配置功能
+
+**问题描述：**
+- 需要将 sillyGirl 中 `/admin/system/basic` 页面的设置功能迁移到 Android 客户端
+- 原页面提供服务器基础配置管理、一键升级和重启功能
+
+**功能分析：**
+
+sillyGirl 的基础配置页面通过 `/api/storage` 接口管理以下配置项：
+- `app.name` — 登录账号（机器人名称）
+- `app.password` — 登录密码
+- `app.started_at` — 启动时间（只读）
+- `app.compiled_at` — 编译版本（只读）
+- `app.machine_id` — 机器码（只读）
+- `app.port` — 端口（修改后跳转新端口）
+- `app.storage` — 默认存储（BoltDB/Redis）
+- `app.redis_addr` / `app.redis_password` — Redis 配置
+
+操作功能：
+- **一键升级**：向 `app.compiled_at` 写入随机字符串，触发后端下载新版本
+- **重启程序**：向 `app.started_at` 写入随机字符串，触发后端重启
+
+**解决方案：**
+
+1. **SettingsViewModel.kt 扩展**
+   - 新增 `loadBasicConfig()` — 启动时自动加载 10 个 `app.*` 配置键
+   - 新增 `saveConfig(key)` — 单字段保存，失焦或回车触发
+   - 新增 `upgrade()` — 一键升级（写入随机值到 `app.compiled_at`）
+   - 新增 `restart()` — 重启程序（写入随机值到 `app.started_at`）
+   - 新增 `SettingsUiState` 字段：`configData`、`editingConfig`、`isUpgrading`、`isRestarting`
+
+2. **SettingsScreen.kt UI 重构**
+   - **服务器信息卡片** — 显示当前服务器地址
+   - **基础配置卡片** — 包含所有可编辑/只读配置字段
+   - **操作按钮卡片** — 一键升级、重启程序（带 loading 状态）
+   - **关于卡片** — 版本信息
+   - **退出登录按钮** — 保留原有功能
+   - 新增 `ConfigTextField` 组件 — 支持密码遮掩、提示图标、回车保存
+
+3. **技术细节**
+   - 密码字段使用 `PasswordVisualTransformation` 遮掩
+   - `FilterChip` 切换 BoltDB/Redis 存储
+   - Redis 配置条件显示（仅当选择 Redis 时）
+   - 键盘 Done 动作自动保存并隐藏键盘
+
+**修改文件：**
+| 文件 | 修改内容 |
+|------|----------|
+| `SettingsViewModel.kt` | 新增配置加载/保存/升级/重启功能 |
+| `SettingsScreen.kt` | UI 全面重构，新增基础配置和操作卡片 |
+
+---
+
 ## 2026-06-25 第十二次会话完成的工作
 
 ### 一、定时任务 API 全面修正（修复 404 错误）
