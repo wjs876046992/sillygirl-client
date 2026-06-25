@@ -1,5 +1,62 @@
 # sillygirl-client 开发进展
 
+## 2026-06-25 第十五次会话完成的工作
+
+### 一、新增发送消息功能
+
+**问题描述：**
+- 需要实现发送消息功能，支持向指定用户/群组发送消息
+- 后端 API `/api/chat/selects` 返回全部数据，未按平台过滤
+- 搜索框无法唤起输入法，影响用户体验
+
+**解决方案：**
+
+1. **新增 Chat 功能模块**
+   - `ChatRepository.kt` - 聊天数据仓库
+   - `ChatViewModel.kt` - 聊天状态管理
+   - `ChatScreen.kt` - 聊天界面 UI
+   - 支持选择平台、机器人、用户/群组发送消息
+
+2. **后端 API 优化**
+   - `/api/chat/selects` 新增 `platform` 和 `bot_id` 参数
+   - 后端过滤，只返回匹配的用户/群组
+   - 跳过空昵称数据，提升数据质量
+
+3. **客户端优化**
+   - 选择平台时重新请求 API（带 platform 参数）
+   - 删除本地过滤逻辑，使用后端过滤结果
+   - 简化代码，移除调试方法
+
+4. **搜索对话框优化**
+   - SearchableDropdown 改用 AlertDialog + LazyColumn 实现
+   - 解决 ExposedDropdownMenu 中输入法无法唤起问题
+   - 支持实时搜索过滤，显示匹配数量
+
+5. **登录认证优化**
+   - 登录 token 保存到 SharedPreferences，支持自动登录
+   - 会话过期处理优化，区分网络错误和认证失败
+   - Cookie 认证方式从 X-Token 改为标准 Cookie
+
+**修改文件：**
+| 文件 | 修改内容 |
+|------|----------|
+| `ChatRepository.kt` | 新增聊天数据仓库 |
+| `ChatViewModel.kt` | 新增聊天状态管理 |
+| `ChatScreen.kt` | 新增聊天界面 UI |
+| `SillyGirlApi.kt` | 新增 getChatSelects API，支持 platform 参数 |
+| `Models.kt` | 新增聊天相关数据模型 |
+| `AppNavGraph.kt` | 新增 Chat 路由 |
+| `DashboardScreen.kt` | 新增发送消息入口 |
+| `RetrofitClient.kt` | Cookie 认证方式优化 |
+| `LoginViewModel.kt` | 登录 token 保存优化 |
+
+**后端改动（sillyGirl）：**
+| 文件 | 修改内容 |
+|------|----------|
+| `chat_api.go` | `/api/chat/selects` 新增 platform/bot_id 参数支持 |
+
+---
+
 ## 2026-06-25 第十四次会话完成的工作
 
 ### 一、分佣订单状态旁增加绑定用户信息
