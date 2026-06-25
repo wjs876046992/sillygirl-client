@@ -298,8 +298,12 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
                                 Spacer(modifier = Modifier.width(2.dp))
+                                val platformLabel = order.bind.platform.takeIf { it.isNotBlank() }
+                                    ?.let { getPlatformName(it) } ?: ""
+                                val userName = order.bind.nickname.takeIf { it.isNotBlank() }
+                                    ?: order.bind.userId
                                 Text(
-                                    order.bind.userId,
+                                    if (platformLabel.isNotBlank()) "$platformLabel $userName" else userName,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                 )

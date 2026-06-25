@@ -237,6 +237,7 @@ data class FenyongOrderContent(
 data class FenyongBind(
     val platform: String = "",
     @SerializedName("user_id") val userId: String = "",
+    val nickname: String = "",
 )
 
 data class FenyongTab(
