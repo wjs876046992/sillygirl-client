@@ -281,6 +281,31 @@ fun OrderItemCard(order: com.sillygirl.client.data.model.FenyongOrder) {
                             )
                         }
                     }
+                    // 绑定用户信息
+                    if (order.bind != null && order.bind.userId.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Filled.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text(
+                                    order.bind.userId,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                    }
                 }
                 timeText?.let {
                     Text(it, style = MaterialTheme.typography.labelSmall, color = GrayText)
