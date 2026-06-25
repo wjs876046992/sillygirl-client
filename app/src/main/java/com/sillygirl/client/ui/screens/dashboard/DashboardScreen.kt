@@ -150,6 +150,7 @@ fun DashboardScreen(
                         MetricGridCard(
                             icon = Icons.Filled.Extension,
                             value = "$installedPlugins",
+                            label = "插件",
                             color = Color(0xFF667EEA),
                             modifier = Modifier.weight(1f),
                             onClick = onNavigateToMyPlugins,
@@ -157,6 +158,7 @@ fun DashboardScreen(
                         MetricGridCard(
                             icon = Icons.Filled.People,
                             value = "${uiState.masterCount}",
+                            label = "管理员",
                             color = Color(0xFF52C41A),
                             modifier = Modifier.weight(1f),
                             onClick = onNavigateToMasters,
@@ -164,6 +166,7 @@ fun DashboardScreen(
                         MetricGridCard(
                             icon = Icons.Filled.Schedule,
                             value = "${uiState.activeTaskCount}",
+                            label = "定时任务",
                             color = Color(0xFFF59E0B),
                             modifier = Modifier.weight(1f),
                             onClick = onNavigateToTasks,
@@ -224,6 +227,7 @@ fun DashboardScreen(
 private fun MetricGridCard(
     icon: ImageVector,
     value: String,
+    label: String,
     color: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
@@ -239,19 +243,20 @@ private fun MetricGridCard(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(color.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, null, modifier = Modifier.size(24.dp), tint = color)
+                Icon(icon, null, modifier = Modifier.size(20.dp), tint = color)
             }
             Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = color)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -523,7 +528,6 @@ private fun FeatureCard(
         modifier = modifier
             .themeShadow(4.dp, RoundedCornerShape(14.dp))
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.02f), RoundedCornerShape(14.dp))
             .clickable(onClick = item.onClick),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,

@@ -262,7 +262,8 @@ fun BigMoneyText(value: Double, color: Color = MaterialTheme.colorScheme.primary
 }
 
 /**
- * 通用迷你顶栏（40dp高度，带标题、导航图标、操作按钮）
+ * 通用迷你顶栏（带标题、导航图标、操作按钮）
+ * height = 48dp（比原40dp更舒适，按钮点击区域更大）
  */
 @Composable
 fun MiniAppBar(
@@ -277,18 +278,90 @@ fun MiniAppBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp)
+                .height(48.dp)
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (navigationIcon != null) {
                 navigationIcon()
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(4.dp))
             }
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 title()
             }
             actions()
+        }
+    }
+}
+
+/**
+ * 品牌顶栏 — Dashboard 专用
+ * 渐变背景 + 大标题 + 副标题 + 服务器信息 + 操作按钮
+ *
+ * 注意：不要在此组件内使用 statusBarsPadding()，
+ * 因为外层 Scaffold 已经处理了系统栏 padding。
+ */
+@Composable
+fun BrandTopBar(
+    title: String,
+    subtitle: String? = null,
+    serverUrl: String? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Surface(
+        color = Color.Transparent,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.verticalGradient(PrimaryGradientColors),
+                )
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                        if (!subtitle.isNullOrBlank()) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.7f),
+                            )
+                        }
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        actions()
+                    }
+                }
+                if (!serverUrl.isNullOrBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Surface(
+                        color = Color.White.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(8.dp),
+                    ) {
+                        Text(
+                            text = serverUrl,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.8f),
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -41,6 +41,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.sillygirl.client.ui.components.MiniAppBar
+import com.sillygirl.client.ui.components.BrandTopBar
+import androidx.compose.ui.graphics.Color
 
 object Routes {
     const val SERVER_LIST = "server_list"
@@ -357,32 +359,16 @@ fun AppNavGraph() {
                     color = MaterialTheme.colorScheme.background,
                 ) {
                     Column {
-                        MiniAppBar(
-                            title = {
-                                Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text("傻妞平台管理助手", style = MaterialTheme.typography.bodyMedium)
-                                        currentUser?.name?.takeIf { it.isNotBlank() }?.let { userName ->
-                                            Text(
-                                                "  ·  $userName",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        }
-                                    }
-                                    Text(
-                                        serverDisplayUrl,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            },
+                        BrandTopBar(
+                            title = "傻妞平台管理助手",
+                            subtitle = currentUser?.name?.takeIf { it.isNotBlank() },
+                            serverUrl = serverDisplayUrl,
                             actions = {
                                 IconButton(onClick = { refreshDashboard() }) {
-                                    Icon(Icons.Filled.Refresh, "刷新")
+                                    Icon(Icons.Filled.Refresh, "刷新", tint = Color.White)
                                 }
                                 IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
-                                    Icon(Icons.Filled.Settings, "设置")
+                                    Icon(Icons.Filled.Settings, "设置", tint = Color.White)
                                 }
                             },
                         )
