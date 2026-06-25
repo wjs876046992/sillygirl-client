@@ -403,3 +403,44 @@ data class StorageBucket(
     val text: String = "",
     val value: String = "",
 )
+
+// ===== Chat / Send =====
+
+data class ChatSelectsResponse(
+    val success: Boolean = false,
+    val data: ChatSelectsData? = null,
+)
+
+data class ChatSelectsData(
+    val platforms: Map<String, List<String>> = emptyMap(),
+    @SerializedName("user_names") val userNames: List<NameLabel> = emptyList(),
+    @SerializedName("group_names") val groupNames: List<NameLabel> = emptyList(),
+)
+
+data class NameLabel(
+    val label: String = "",
+    val value: String = "",
+    val platform: String = "",
+)
+
+data class SendMessageRequest(
+    val platform: String,
+    @SerializedName("bot_id") val botId: String,
+    @SerializedName("user_id") val userId: String = "",
+    @SerializedName("chat_id") val chatId: String = "",
+    val content: String,
+)
+
+data class SendMessageResponse(
+    val success: Boolean = false,
+    val data: SendMessageData? = null,
+    val errorMessage: String? = null,
+)
+
+data class SendMessageData(
+    val platform: String = "",
+    @SerializedName("bot_id") val botId: String = "",
+    @SerializedName("user_id") val userId: String = "",
+    @SerializedName("chat_id") val chatId: String = "",
+    @SerializedName("message_id") val messageId: String = "",
+)

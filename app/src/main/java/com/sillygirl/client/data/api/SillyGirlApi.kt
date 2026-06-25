@@ -106,4 +106,15 @@ interface SillyGirlApi {
     suspend fun searchStorage(
         @Query("search") search: String,
     ): ApiResponse<List<StorageBucket>>
+
+    // ===== Chat / Send =====
+    @GET("api/chat/selects")
+    suspend fun getChatSelects(
+        @Query("platform") platform: String? = null,
+        @Query("bot_id") botId: String? = null,
+    ): ChatSelectsResponse
+
+    @POST("api/send")
+    @Headers("Content-Type: application/json")
+    suspend fun sendMessage(@Body body: SendMessageRequest): SendMessageResponse
 }

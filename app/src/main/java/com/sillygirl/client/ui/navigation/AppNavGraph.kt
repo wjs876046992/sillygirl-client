@@ -33,6 +33,7 @@ import com.sillygirl.client.ui.screens.masters.MastersScreen
 import com.sillygirl.client.ui.screens.tasks.TasksScreen
 import com.sillygirl.client.ui.screens.service.ServiceScreen
 import com.sillygirl.client.ui.screens.storage.StorageScreen
+import com.sillygirl.client.ui.screens.chat.ChatScreen
 import com.sillygirl.client.ui.screens.serverlist.ServerListScreen
 import com.sillygirl.client.ui.screens.serverlist.ServerListViewModel
 import com.sillygirl.client.ui.screens.serverlist.ServerListViewModelFactory
@@ -57,6 +58,7 @@ object Routes {
     const val TASKS = "tasks"
     const val SERVICE = "service"
     const val STORAGE = "storage"
+    const val CHAT = "chat"
     const val AUTO_LOGIN = "auto_login" // 自动登录加载页
 }
 
@@ -91,12 +93,13 @@ fun AppNavGraph() {
     // 注册会话过期回调 — 任何 API 返回 401 时触发
     DisposableEffect(Unit) {
         RetrofitClient.onSessionExpired = {
-            // 在主线程处理状态重置（不直接导航，由 startRoute 逻辑处理）
+            // 在主线程处理状态重置
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
                 currentUser = null
                 currentUserLoaded = false
                 isLoggedIn = false
-                // 不再直接导航，由 startRoute 逻辑自动跳转到 SERVER_LIST
+                // 同时清除本地保存的 token，防止下次启动仍使用过期 token
+                serverConfig.clearToken()
             }
         }
         onDispose {
@@ -162,26 +165,24 @@ fun AppNavGraph() {
                         RetrofitClient.token = null
                         isLoggedIn = false
                     } else {
-                        // 网络错误/超时等瞬时问题：保留 token，仍尝试进入 Dashboard
+                        // 网络错误/超时等瞬时问题：保留 token，回到 SERVER_LIST 让用户重试
+                        // 不进入 Dashboard（否则 token 无效时任何 API 调用都会触发 401 → 强制退出）
                         android.util.Log.w("AppNavGraph", "Verify failed (${e::class.simpleName}: ${e.message}), keeping token")
-                        isLoggedIn = true
+                        isLoggedIn = false
                     }
                     isVerifying = false
                 }
             )
         } catch (e: Exception) {
             // 捕获任何未预期的异常，防止闪退
-            // 仅认证失败时清除 token，其他错误保留 token
             android.util.Log.e("AppNavGraph", "Startup verification failed", e)
             val isAuthFailure = e is retrofit2.HttpException && (e.code() == 401 || e.code() == 403)
             if (isAuthFailure) {
                 serverConfig.clearToken()
                 RetrofitClient.token = null
-                isLoggedIn = false
-            } else {
-                // 网络错误等：保留 token，让用户进入 Dashboard 后可刷新重试
-                isLoggedIn = true
             }
+            // 无论何种错误都回到 SERVER_LIST，保留 token 让用户可重试
+            isLoggedIn = false
             isVerifying = false
         }
     }
@@ -232,7 +233,7 @@ fun AppNavGraph() {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
-        // 启动验证中：显示加载动画
+        // 启动验证中：显示加载动画，不创建 NavHost
         if (isVerifying && hasServer) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -244,6 +245,7 @@ fun AppNavGraph() {
             return@Scaffold
         }
 
+        // 验证完成后创建 NavHost（startDestination 此时已是最终值）
         NavHost(
             navController = navController,
             startDestination = startRoute,
@@ -381,6 +383,7 @@ fun AppNavGraph() {
                             onNavigateToTasks = { navController.navigate(Routes.TASKS) },
                             onNavigateToService = { navController.navigate(Routes.SERVICE) },
                             onNavigateToStorage = { navController.navigate(Routes.STORAGE) },
+                            onNavigateToChat = { navController.navigate(Routes.CHAT) },
                             onRefreshReady = { refreshFn -> dashboardRefresh = refreshFn },
                         )
                     }
@@ -470,6 +473,22 @@ fun AppNavGraph() {
             composable(Routes.STORAGE) {
                 StorageScreen(onBack = { navController.popBackStack() })
             }
+
+            composable(Routes.CHAT) {
+                ChatScreen(onBack = { navController.popBackStack() })
+            }
+        }
+
+        // 监听登出/Token过期：isLoggedIn 从 true→false 时导航回 SERVER_LIST
+        var prevIsLoggedIn by remember { mutableStateOf(isLoggedIn) }
+        LaunchedEffect(isLoggedIn) {
+            if (prevIsLoggedIn && !isLoggedIn) {
+                navController.navigate(Routes.SERVER_LIST) {
+                    popUpTo(0) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+            prevIsLoggedIn = isLoggedIn
         }
     }
 }

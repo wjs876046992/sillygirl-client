@@ -43,6 +43,7 @@ fun DashboardScreen(
     onNavigateToTasks: () -> Unit = {},
     onNavigateToService: () -> Unit = {},
     onNavigateToStorage: () -> Unit = {},
+    onNavigateToChat: () -> Unit = {},
     onRefreshReady: (((Boolean) -> Unit) -> Unit)? = null,
     viewModel: DashboardViewModel = viewModel(),
 ) {
@@ -179,6 +180,7 @@ fun DashboardScreen(
                         onNavigateToPluginMarket,
                         onNavigateToStorage,
                         onNavigateToService,
+                        onNavigateToChat,
                     )
                 }
 
@@ -498,11 +500,13 @@ private fun FeatureGrid(
     onNavigateToPluginMarket: () -> Unit,
     onNavigateToStorage: () -> Unit,
     onNavigateToService: () -> Unit,
+    onNavigateToChat: () -> Unit,
 ) {
     val actions = listOf(
         FeatureItem(Icons.Filled.Store, "插件市场", onNavigateToPluginMarket, Color(0xFF667EEA)),
         FeatureItem(Icons.Filled.Storage, "存储", onNavigateToStorage, Color(0xFF22C55E)),
         FeatureItem(Icons.Filled.Dns, "服务", onNavigateToService, Color(0xFFF59E0B)),
+        FeatureItem(Icons.Filled.Chat, "发消息", onNavigateToChat, Color(0xFF5B6770)),
     )
 
     val gridItems = actions.chunked(3)

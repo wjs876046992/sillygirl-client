@@ -3,14 +3,11 @@ package com.sillygirl.client.data.api
 import android.util.Log
 import com.google.gson.GsonBuilder
 import okhttp3.Interceptor
-import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import okio.Buffer
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.net.CookieManager
-import java.net.CookiePolicy
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
@@ -42,17 +39,21 @@ object RetrofitClient {
         token = null
     }
 
-    // Cookie manager persists tokens between requests
-    private val cookieManager = CookieManager().apply {
-        setCookiePolicy(CookiePolicy.ACCEPT_ALL)
+    /** 从 Set-Cookie 头中提取 token 值 */
+    fun extractTokenFromCookie(setCookie: String?): String? {
+        if (setCookie == null) return null
+        // Set-Cookie 格式: token=xxx; Path=/; ...; Max-Age=86400
+        val parts = setCookie.split(";").map { it.trim() }
+        val tokenPart = parts.firstOrNull { it.startsWith("token=") } ?: return null
+        return tokenPart.removePrefix("token=").takeIf { it.isNotBlank() }
     }
 
-    /** 请求拦截器 — 添加 token 和日志 */
+    /** 请求拦截器 — 添加 Cookie token 和日志 */
     private val authInterceptor = Interceptor { chain ->
         val request = chain.request()
         val newRequest = if (token != null) {
             request.newBuilder()
-                .header("X-Token", token!!)
+                .header("Cookie", "token=${token!!}")
                 .build()
         } else {
             request
@@ -79,7 +80,7 @@ object RetrofitClient {
         chain.proceed(newRequest)
     }
 
-    /** 响应拦截器 — 检测会话过期 + 打印响应 */
+    /** 响应拦截器 — 检测会话过期 + 登录时提取 token + 打印响应 */
     private val sessionInterceptor = Interceptor { chain ->
         val response = chain.proceed(chain.request())
 
@@ -95,7 +96,17 @@ object RetrofitClient {
         }
         Log.d(TAG, "═══════════════════════════════════════════")
 
-        // 后端 401 或返回 success=false 且消息含"未授权"或"登录"时触发
+        // 登录响应：从 Set-Cookie 提取 token（跟 Web 端一致）
+        if (url.encodedPath.endsWith("/api/login/account") && response.code == 200) {
+            val setCookie = response.header("Set-Cookie")
+            val extracted = extractTokenFromCookie(setCookie)
+            if (extracted != null) {
+                token = extracted
+                Log.d(TAG, "▶ LOGIN TOKEN: ${extracted.take(8)}...")
+            }
+        }
+
+        // 会话过期：清除 token
         if (response.code == 401 || response.code == 403) {
             token = null
             onSessionExpired?.invoke()
@@ -112,7 +123,6 @@ object RetrofitClient {
             .addInterceptor(authInterceptor)
             .addInterceptor(sessionInterceptor)
             .addInterceptor(logging)
-            .cookieJar(JavaNetCookieJar(cookieManager))
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)

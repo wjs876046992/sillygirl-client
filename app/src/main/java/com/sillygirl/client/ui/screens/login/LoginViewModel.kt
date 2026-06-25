@@ -56,6 +56,10 @@ class LoginViewModel(
             val result = repository.login(state.serverUrl, state.username, state.password)
             result.fold(
                 onSuccess = {
+                    // 保存 token 到 SharedPreferences，确保下次启动可自动登录
+                    RetrofitClient.token?.let { token ->
+                        serverConfig.saveToken(token)
+                    }
                     // 如果是从服务器列表选择的，保存登录凭证
                     val existingServers = serverConfig.getServers()
                     val matchingIndex = existingServers.indexOfFirst { it.url == state.serverUrl }
