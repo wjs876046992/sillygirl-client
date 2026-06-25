@@ -1,0 +1,12 @@
+# Build
+build/
+app/build/
+.idea/
+*.iml
+*.log
+local.properties
+.gradle/
+
+# OS
+.DS_Store
+Thumbs.db
