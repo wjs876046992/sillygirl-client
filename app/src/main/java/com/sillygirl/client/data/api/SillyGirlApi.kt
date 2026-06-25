@@ -75,24 +75,19 @@ interface SillyGirlApi {
         @Query("pageSize") pageSize: Int = 20,
     ): TaskResponse
 
-    @POST("api/tasks/add")
+    @POST("api/tasks")
     @Headers("Content-Type: application/json")
-    suspend fun addTask(@Body body: TaskAddRequest): ApiResponse<Any>
+    suspend fun saveTask(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse<Any>
 
-    @POST("api/tasks/edit")
+    @HTTP(method = "DELETE", path = "api/tasks", hasBody = true)
     @Headers("Content-Type: application/json")
-    suspend fun editTask(@Body body: TaskEditRequest): ApiResponse<Any>
-
-    @POST("api/tasks/del")
-    @Headers("Content-Type: application/json")
-    suspend fun delTask(@Body body: TaskActionRequest): ApiResponse<Any>
-
-    @POST("api/tasks/setEnable")
-    @Headers("Content-Type: application/json")
-    suspend fun setTaskEnable(@Body body: TaskSetEnableRequest): ApiResponse<Any>
+    suspend fun deleteTask(@Body body: Map<String, String>): ApiResponse<Any>
 
     @GET("api/tasks/run")
     suspend fun runTask(@Query("task_id") taskId: String): ApiResponse<Any>
+
+    @GET("api/task/selects")
+    suspend fun getTaskSelects(@Query("task_id") taskId: String = ""): TaskSelectsResponse
 
     // ===== Storage =====
     @PUT("api/storage")

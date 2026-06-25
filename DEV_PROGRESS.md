@@ -1,5 +1,63 @@
 # sillygirl-client 开发进展
 
+## 2026-06-25 第十二次会话完成的工作
+
+### 一、定时任务 API 全面修正（修复 404 错误）
+
+**问题描述：**
+- 保存/删除/启用/执行任务全部返回 404
+- 客户端使用的 API 端点与后端完全不匹配
+- 缺少发送环境（senders）和脚本（scripts）选择功能
+
+**根因分析：**
+- 客户端调用 `/api/tasks/add`、`/api/tasks/edit`、`/api/tasks/del`、`/api/tasks/setEnable` 等不存在的端点
+- 后端实际 API：
+  - `POST /api/tasks` — 创建和编辑（body 含 `task_id`）
+  - `DELETE /api/tasks` — 删除（body 含 `task_id`）
+  - `GET /api/tasks/run?task_id=xxx` — 执行
+  - `GET /api/task/selects?task_id=xxx` — 获取可选脚本和平台
+
+**解决方案：**
+
+1. **SillyGirlApi.kt API 端点修正**
+   - `addTask` + `editTask` + `setTaskEnable` → 统一为 `saveTask`（`POST /api/tasks`，body 为 `Map<String, Any>`）
+   - `delTask` → `deleteTask`（`DELETE /api/tasks`，body 为 `Map<String, String>`）
+   - `runTask` → 改为 `GET` 请求，`task_id` 作为 Query 参数
+   - 新增 `getTaskSelects`（`GET /api/task/selects`）获取可选脚本和平台
+
+2. **Models.kt 数据模型更新**
+   - `TaskInfo` 新增 `scripts: List<String>` 和 `senders: List<TaskSender>` 字段
+   - 新增 `TaskSender`（platform/chatId/userId/botId）
+   - 新增 `TaskSelectsResponse`、`TaskSelectsData`、`NameOption`
+   - 移除不再需要的 `TaskAddRequest`、`TaskEditRequest`、`TaskActionRequest`、`TaskSetEnableRequest`
+
+3. **TasksScreen.kt 编辑弹窗重写**
+   - 打开编辑弹窗时自动调用 `/api/task/selects` 获取可选项
+   - **执行脚本选择**：从 selects 获取所有可用脚本（UUID → 标题），支持多选（Checkbox）
+   - **执行环境选择**：
+     - 平台选择（从 selects.platforms 获取）
+     - 机器人选择（如果平台有多个 bot）
+     - 目标选择（群组/用户，从 selects.group_names/user_names 获取）
+     - 支持多环境（可添加多个 sender）
+   - **任务保存**：body 包含 `task_id`、`title`、`schedule`、`command`、`remark`、`scripts`、`senders`
+   - 新建任务时自动生成 UUID 作为 `task_id`
+
+4. **TasksViewModel 修正**
+   - `toggleTask` → 使用 `saveTask` 传 `task_id` + `enable`
+   - `deleteTask` → 使用 `deleteTask`（`DELETE /api/tasks`）
+   - `runTask` → 使用 `GET /api/tasks/run?task_id=xxx`
+   - `saveTask` → 统一创建/编辑方法，body 为 `Map<String, Any>`
+   - 新增 `loadSelects()` 加载可选项
+
+**修改文件：**
+| 文件 | 修改内容 |
+|------|----------|
+| `SillyGirlApi.kt` | API 端点全面修正，新增 getTaskSelects |
+| `Models.kt` | TaskInfo 新增 scripts/senders 字段，新增 TaskSender/TaskSelectsResponse 等 |
+| `TasksScreen.kt` | 编辑弹窗重写，支持脚本选择和发送环境选择 |
+
+---
+
 ## 2026-06-25 第十一次会话完成的工作
 
 ### 一、修复后台切回后登录状态丢失

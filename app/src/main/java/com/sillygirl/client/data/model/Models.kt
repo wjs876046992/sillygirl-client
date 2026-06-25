@@ -304,6 +304,8 @@ data class PlatformOption(
 data class TaskResponse(
     val success: Boolean = false,
     val data: List<TaskInfo> = emptyList(),
+    val page: Int = 1,
+    val total: Int = 0,
 )
 
 data class TaskInfo(
@@ -312,15 +314,44 @@ data class TaskInfo(
     val title: String = "",
     val schedule: String = "",
     val command: String = "",
+    val scripts: List<String> = emptyList(),
+    val senders: List<TaskSender> = emptyList(),
     val enable: Boolean = false,
     @SerializedName("created_at") val createdAt: Long = 0,
     val remark: String = "",
     val icons: List<TaskIcon> = emptyList(),
 )
 
+data class TaskSender(
+    @SerializedName("chat_id") val chatId: String = "",
+    @SerializedName("user_id") val userId: String = "",
+    @SerializedName("platform") val platform: String = "",
+    @SerializedName("bot_id") val botId: String = "",
+)
+
 data class TaskIcon(
     val link: String = "",
     val title: String = "",
+)
+
+/**
+ * /api/task/selects 返回的可选项
+ */
+data class TaskSelectsResponse(
+    val success: Boolean = false,
+    val data: TaskSelectsData? = null,
+)
+
+data class TaskSelectsData(
+    val scripts: Map<String, String> = emptyMap(),
+    val platforms: Map<String, List<String>> = emptyMap(),
+    @SerializedName("user_names") val userNames: List<NameOption> = emptyList(),
+    @SerializedName("group_names") val groupNames: List<NameOption> = emptyList(),
+)
+
+data class NameOption(
+    val label: String = "",
+    val value: String = "",
 )
 
 // ===== Request Models (类型安全的请求数据类) =====
@@ -356,36 +387,10 @@ data class MasterDelRequest(
 )
 
 /**
- * 任务添加/编辑请求
+ * 任务删除请求
  */
-data class TaskAddRequest(
-    val title: String,
-    val schedule: String,
-    val command: String,
-    val remark: String = "",
-)
-
-data class TaskEditRequest(
-    val id: String,
-    val title: String,
-    val schedule: String,
-    val command: String,
-    val remark: String = "",
-)
-
-/**
- * 任务删除/运行请求
- */
-data class TaskActionRequest(
-    val id: String,
-)
-
-/**
- * 任务启用/禁用请求
- */
-data class TaskSetEnableRequest(
-    val id: String,
-    val enable: Boolean,
+data class TaskDeleteRequest(
+    @SerializedName("task_id") val taskId: String,
 )
 
 // ===== Storage =====
