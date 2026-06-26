@@ -46,45 +46,69 @@ class ChatViewModel : ViewModel() {
      */
     private fun loadSelects(platform: String? = null, botId: String? = null) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            repository.getChatSelects(platform, botId).fold(
-                onSuccess = { data ->
-                    // 调试日志
-                    android.util.Log.d("ChatViewModel", "=== Chat Selects Loaded ===")
-                    android.util.Log.d("ChatViewModel", "Platform filter: $platform")
-                    android.util.Log.d("ChatViewModel", "User names count: ${data.userNames.size}")
-                    android.util.Log.d("ChatViewModel", "Group names count: ${data.groupNames.size}")
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                repository.getChatSelects(platform, botId).fold(
+                    onSuccess = { data ->
+                        // Gson 反序列化时 null 会绕过 Kotlin 默认值，需要防御性处理
+                        val users = data.userNames ?: emptyList()
+                        val groups = data.groupNames ?: emptyList()
+                        val platforms = data.platforms ?: emptyMap()
 
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            selects = data,
-                            filteredUsers = data.userNames,  // 后端已过滤，直接使用
-                            filteredGroups = data.groupNames,  // 后端已过滤，直接使用
-                        )
+                        // 调试日志
+                        android.util.Log.d("ChatViewModel", "=== Chat Selects Loaded ===")
+                        android.util.Log.d("ChatViewModel", "Platform filter: $platform")
+                        android.util.Log.d("ChatViewModel", "User names count: ${users.size}")
+                        android.util.Log.d("ChatViewModel", "Group names count: ${groups.size}")
+
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                selects = data.copy(userNames = users, groupNames = groups, platforms = platforms),
+                                filteredUsers = users,
+                                filteredGroups = groups,
+                            )
+                        }
+                    },
+                    onFailure = { e ->
+                        android.util.Log.e("ChatViewModel", "Failed to load selects", e)
+                        _uiState.update {
+                            it.copy(isLoading = false, snackbarMessage = "加载失败: ${e.message}")
+                        }
                     }
-                },
-                onFailure = { e ->
-                    android.util.Log.e("ChatViewModel", "Failed to load selects", e)
-                    _uiState.update {
-                        it.copy(isLoading = false, snackbarMessage = "加载失败: ${e.message}")
-                    }
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "loadSelects exception", e)
+                _uiState.update {
+                    it.copy(isLoading = false, snackbarMessage = "加载异常: ${e.message}")
                 }
-            )
+            }
         }
     }
 
     fun selectPlatform(platform: String) {
-        _uiState.update {
-            it.copy(
-                selectedPlatform = platform,
-                selectedBot = null,
-                selectedUserId = null,
-                selectedChatId = null,
-            )
+        try {
+            // 先重置选中状态，再请求新数据
+            _uiState.update {
+                it.copy(
+                    selectedPlatform = platform,
+                    selectedBot = null,
+                    selectedUserId = null,
+                    selectedChatId = null,
+                )
+            }
+            // 重新请求 API，按平台过滤
+            loadSelects(platform = platform)
+        } catch (e: Exception) {
+            android.util.Log.e("ChatViewModel", "selectPlatform failed: $platform", e)
+            _uiState.update {
+                it.copy(
+                    selectedPlatform = platform,
+                    isLoading = false,
+                    snackbarMessage = "切换平台失败: ${e.message}",
+                )
+            }
         }
-        // 重新请求 API，按平台过滤
-        loadSelects(platform = platform)
     }
 
     fun selectBot(botId: String) {

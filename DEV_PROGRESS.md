@@ -1,5 +1,57 @@
 # sillygirl-client 开发进展
 
+## 2026-06-26 第十八次会话完成的工作
+
+### 一、修复 Chat 页面选择平台闪退（NPE）
+
+**问题描述：**
+- Chat 页面选择 "web" 平台时闪退
+- logcat 显示 `NullPointerException: List.size() on a null object reference`
+
+**根因分析：**
+- 后端对 "web" 平台返回 `user_names: null`（而非空数组 `[]`）
+- Gson 反序列化时绕过 Kotlin data class 的默认值 `= emptyList()`，直接将字段设为 `null`
+- 代码 `data.userNames.size` 对 null 调用 `.size()` → NPE 崩溃
+
+**解决方案：**
+1. `ChatViewModel.loadSelects()` 的 `onSuccess` 中添加 null 防御：
+   ```kotlin
+   val users = data.userNames ?: emptyList()
+   val groups = data.groupNames ?: emptyList()
+   val platforms = data.platforms ?: emptyMap()
+   ```
+2. 通过 `data.copy()` 确保后续 UI 访问也不会遇到 null
+3. `selectPlatform()` 和 `loadSelects()` 添加外层 try-catch 防御
+
+### 二、DropdownSelector 视觉升级
+
+**改进内容：**
+
+| 特性 | 效果 |
+|------|------|
+| 选中态动画 | 边框渐变为主色 + 背景微 tint，200ms 过渡 |
+| 箭头旋转动画 | 展开时向上旋转 180°，收起时回弹 |
+| 选中圆点 | 左侧 8dp primary 色圆点指示器 |
+| 标签变色 | 选中时 label 变 primary 色 + 加粗 |
+| 下拉菜单 | 选中项 primary 色 + ✓ 图标 + SemiBold 字体 |
+| 清除选项 | 红色 ✕ 图标 + 分割线 |
+| 圆角升级 | 触发器 12dp 圆角，更现代 |
+| SearchableDropdown | 同步升级，选中态一致 |
+
+### 三、清理 gradle.properties
+
+移除硬编码的 `org.gradle.java.home` 和 `android.sdk.path`，改由 `JAVA_HOME` 和 `ANDROID_HOME` 环境变量自动识别。
+
+**修改文件：**
+
+| 文件 | 修改内容 |
+|------|----------|
+| `ChatViewModel.kt` | loadSelects/selectPlatform 添加 null 防御 + try-catch |
+| `ChatScreen.kt` | DropdownSelector 视觉升级（动画+圆点+颜色）；SearchableDropdown 同步升级 |
+| `gradle.properties` | 移除硬编码路径 |
+
+---
+
 ## 2026-06-26 第十七次会话完成的工作
 
 ### 一、修复 Chat 页面闪退（3个问题）

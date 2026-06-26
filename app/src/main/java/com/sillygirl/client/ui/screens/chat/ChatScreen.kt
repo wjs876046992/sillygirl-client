@@ -1,6 +1,7 @@
 package com.sillygirl.client.ui.screens.chat
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,8 +13,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -308,55 +313,164 @@ private fun DropdownSelector(
     enabled: Boolean = true,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val displayText = selected ?: placeholder
+    val isSelected = selected != null && selected.isNotBlank()
+    val displayText = if (isSelected) {
+        options.find { it.first == selected }?.second ?: selected
+    } else {
+        placeholder
+    }
+
+    // 动画：箭头旋转
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "arrow",
+    )
+
+    // 动画：选中态边框颜色
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+        else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+        animationSpec = tween(durationMillis = 200),
+        label = "border",
+    )
+
+    // 动画：选中态背景色
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.04f)
+        else MaterialTheme.colorScheme.surface,
+        animationSpec = tween(durationMillis = 200),
+        label = "bg",
+    )
 
     Column {
         Text(
             label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium,
+            color = if (isSelected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(4.dp))
-        // 使用 Surface + DropdownMenu 替代 ExposedDropdownMenuBox
-        // 避免 ExposedDropdownMenu 内部 verticalScroll 与父级 verticalScroll 嵌套崩溃
+        Spacer(Modifier.height(6.dp))
         Box {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(enabled = enabled) { expanded = true },
-                shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(12.dp),
+                color = bgColor,
+                border = BorderStroke(1.dp, borderColor),
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // 选中时显示圆点指示器
+                    if (isSelected) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary,
+                                    RoundedCornerShape(4.dp)
+                                )
+                        )
+                        Spacer(Modifier.width(10.dp))
+                    }
                     Text(
                         text = displayText,
                         modifier = Modifier.weight(1f),
-                        color = if (selected != null) MaterialTheme.colorScheme.onSurface
+                        color = if (isSelected) MaterialTheme.colorScheme.onSurface
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
                     )
                     Icon(
                         Icons.Filled.ArrowDropDown,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.rotate(arrowRotation).size(22.dp),
+                        tint = if (isSelected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
+
+            // 下拉菜单
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
+                modifier = Modifier
+                    .widthIn(min = 220.dp)
+                    .padding(horizontal = 4.dp),
             ) {
-                options.forEach { (value, label) ->
+                // 清除选项
+                if (isSelected) {
                     DropdownMenuItem(
-                        text = { Text(label) },
+                        text = {
+                            Text(
+                                "清除选择",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        },
+                        onClick = {
+                            onSelected("")
+                            expanded = false
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Close,
+                                null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        },
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    )
+                }
+
+                // 选项列表
+                options.forEachIndexed { index, (value, label) ->
+                    val isThisSelected = value == selected
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                label,
+                                color = if (isThisSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
+                                fontWeight = if (isThisSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        },
                         onClick = {
                             onSelected(value)
                             expanded = false
                         },
+                        leadingIcon = {
+                            if (isThisSelected) {
+                                Icon(
+                                    Icons.Filled.Check,
+                                    null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            } else {
+                                Spacer(Modifier.size(18.dp))
+                            }
+                        },
+                    )
+                }
+
+                // 空选项
+                if (options.isEmpty()) {
+                    Text(
+                        "  暂无选项",
+                        modifier = Modifier.padding(vertical = 14.dp, horizontal = 16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -373,40 +487,77 @@ private fun SearchableDropdown(
     placeholder: String,
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    val displayText = options.find { it.value == selected }?.label ?: placeholder
+    val isSelected = selected != null && selected.isNotBlank()
+    val displayText = if (isSelected) {
+        options.find { it.value == selected }?.label ?: selected
+    } else {
+        placeholder
+    }
+
+    // 动画：选中态边框颜色
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+        else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+        animationSpec = tween(durationMillis = 200),
+        label = "border",
+    )
+
+    // 动画：选中态背景色
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.04f)
+        else MaterialTheme.colorScheme.surface,
+        animationSpec = tween(durationMillis = 200),
+        label = "bg",
+    )
 
     Column {
         Text(
             label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium,
+            color = if (isSelected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(4.dp))
-        // 使用 Surface + clickable 实现点击效果
+        Spacer(Modifier.height(6.dp))
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { showDialog = true },
-            shape = RoundedCornerShape(10.dp),
-            color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+            shape = RoundedCornerShape(12.dp),
+            color = bgColor,
+            border = BorderStroke(1.dp, borderColor),
         ) {
             Row(
                 modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // 选中时显示圆点指示器
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                MaterialTheme.colorScheme.primary,
+                                RoundedCornerShape(4.dp)
+                            )
+                    )
+                    Spacer(Modifier.width(10.dp))
+                }
                 Text(
                     text = displayText,
                     modifier = Modifier.weight(1f),
-                    color = if (selected != null) MaterialTheme.colorScheme.onSurface
+                    color = if (isSelected) MaterialTheme.colorScheme.onSurface
                     else MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
                 )
                 Icon(
                     Icons.Filled.Search,
                     contentDescription = "搜索",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                    tint = if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
