@@ -2,10 +2,7 @@ package com.sillygirl.client.ui.screens.chat
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -14,7 +11,6 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,7 +19,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sillygirl.client.data.model.ChatSelectsData
 import com.sillygirl.client.data.model.NameLabel
 import com.sillygirl.client.ui.components.GlassCard
 import com.sillygirl.client.ui.components.MiniAppBar
@@ -47,13 +42,7 @@ fun ChatScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
+        topBar = {
             MiniAppBar(
                 title = {
                     Text("发送消息", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
@@ -64,253 +53,251 @@ fun ChatScreen(
                     }
                 },
             )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { padding ->
+        if (uiState.isLoading && uiState.selects == null) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp)),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                // 目标选择卡片
+                GlassCard {
+                    Text(
+                        "目标",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.height(12.dp))
 
-            if (uiState.isLoading && uiState.selects == null) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    // 平台选择
+                    val platforms = uiState.selects?.platforms?.keys?.sorted() ?: emptyList()
+                    DropdownSelector(
+                        label = "平台",
+                        options = platforms.map { it to it },
+                        selected = uiState.selectedPlatform,
+                        onSelected = { viewModel.selectPlatform(it) },
+                        placeholder = "选择平台",
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // Bot 选择
+                    val bots = uiState.selects?.platforms?.get(uiState.selectedPlatform) ?: emptyList()
+                    DropdownSelector(
+                        label = "机器人",
+                        options = bots.map { it to it },
+                        selected = uiState.selectedBot,
+                        onSelected = { viewModel.selectBot(it) },
+                        placeholder = "选择机器人（可选）",
+                        enabled = uiState.selectedPlatform != null,
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // 目标类型切换
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = !uiState.isGroup,
+                            onClick = { viewModel.setTargetType(false) },
+                            label = { Text("私聊") },
+                            leadingIcon = if (!uiState.isGroup) {
+                                { Icon(Icons.Filled.Check, null, modifier = Modifier.size(16.dp)) }
+                            } else null,
+                        )
+                        FilterChip(
+                            selected = uiState.isGroup,
+                            onClick = { viewModel.setTargetType(true) },
+                            label = { Text("群聊") },
+                            leadingIcon = if (uiState.isGroup) {
+                                { Icon(Icons.Filled.Check, null, modifier = Modifier.size(16.dp)) }
+                            } else null,
+                        )
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // 用户/群选择
+                    if (uiState.isGroup) {
+                        val groups = uiState.filteredGroups
+                        Column {
+                            if (uiState.selectedPlatform != null) {
+                                Text(
+                                    "共 ${groups.size} 个群组",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            SearchableDropdown(
+                                label = "目标群",
+                                options = groups,
+                                selected = uiState.selectedChatId,
+                                onSelected = { viewModel.selectChatId(it) },
+                                placeholder = if (uiState.selectedPlatform == null) "请先选择平台" else "搜索群组名称或ID...",
+                            )
+                        }
+                    } else {
+                        val users = uiState.filteredUsers
+                        Column {
+                            if (uiState.selectedPlatform != null) {
+                                Text(
+                                    "共 ${users.size} 个用户",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            SearchableDropdown(
+                                label = "目标用户",
+                                options = users,
+                                selected = uiState.selectedUserId,
+                                onSelected = { viewModel.selectUserId(it) },
+                                placeholder = if (uiState.selectedPlatform == null) "请先选择平台" else "搜索用户名称或ID...",
+                            )
+                        }
+                    }
                 }
-            } else {
-                Column(
+
+                // 消息输入卡片
+                GlassCard {
+                    Text(
+                        "消息",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = uiState.message,
+                        onValueChange = { viewModel.updateMessage(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("输入要发送的消息...") },
+                        minLines = 3,
+                        maxLines = 8,
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                }
+
+                // 发送按钮
+                Button(
+                    onClick = { viewModel.sendMessage() },
                     modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    enabled = !uiState.isSending
+                        && uiState.selectedPlatform != null
+                        && uiState.message.isNotBlank(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryGradientColors[0],
+                    ),
                 ) {
-                    // 目标选择卡片
-                    GlassCard {
-                        Text(
-                            "目标",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
+                    if (uiState.isSending) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp,
                         )
-                        Spacer(Modifier.height(12.dp))
-
-                        // 平台选择
-                        val platforms = uiState.selects?.platforms?.keys?.sorted() ?: emptyList()
-                        DropdownSelector(
-                            label = "平台",
-                            options = platforms.map { it to it },
-                            selected = uiState.selectedPlatform,
-                            onSelected = { viewModel.selectPlatform(it) },
-                            placeholder = "选择平台",
+                        Spacer(Modifier.width(8.dp))
+                        Text("发送中...", color = Color.White)
+                    } else {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send,
+                            null,
+                            modifier = Modifier.size(18.dp),
+                            tint = Color.White,
                         )
-
-                        Spacer(Modifier.height(10.dp))
-
-                        // Bot 选择
-                        val bots = uiState.selects?.platforms?.get(uiState.selectedPlatform) ?: emptyList()
-                        DropdownSelector(
-                            label = "机器人",
-                            options = bots.map { it to it },
-                            selected = uiState.selectedBot,
-                            onSelected = { viewModel.selectBot(it) },
-                            placeholder = "选择机器人（可选）",
-                            enabled = uiState.selectedPlatform != null,
-                        )
-
-                        Spacer(Modifier.height(10.dp))
-
-                        // 目标类型切换
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilterChip(
-                                selected = !uiState.isGroup,
-                                onClick = { viewModel.setTargetType(false) },
-                                label = { Text("私聊") },
-                                leadingIcon = if (!uiState.isGroup) {
-                                    { Icon(Icons.Filled.Check, null, modifier = Modifier.size(16.dp)) }
-                                } else null,
-                            )
-                            FilterChip(
-                                selected = uiState.isGroup,
-                                onClick = { viewModel.setTargetType(true) },
-                                label = { Text("群聊") },
-                                leadingIcon = if (uiState.isGroup) {
-                                    { Icon(Icons.Filled.Check, null, modifier = Modifier.size(16.dp)) }
-                                } else null,
-                            )
-                        }
-
-                        Spacer(Modifier.height(10.dp))
-
-                        // 用户/群选择
-                        if (uiState.isGroup) {
-                            val groups = uiState.filteredGroups
-                            Column {
-                                // 数据统计
-                                if (uiState.selectedPlatform != null) {
-                                    Text(
-                                        "共 ${groups.size} 个群组",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                SearchableDropdown(
-                                    label = "目标群",
-                                    options = groups,
-                                    selected = uiState.selectedChatId,
-                                    onSelected = { viewModel.selectChatId(it) },
-                                    placeholder = if (uiState.selectedPlatform == null) "请先选择平台" else "搜索群组名称或ID...",
-                                )
-                            }
-                        } else {
-                            val users = uiState.filteredUsers
-                            Column {
-                                // 数据统计
-                                if (uiState.selectedPlatform != null) {
-                                    Text(
-                                        "共 ${users.size} 个用户",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                SearchableDropdown(
-                                    label = "目标用户",
-                                    options = users,
-                                    selected = uiState.selectedUserId,
-                                    onSelected = { viewModel.selectUserId(it) },
-                                    placeholder = if (uiState.selectedPlatform == null) "请先选择平台" else "搜索用户名称或ID...",
-                                )
-                            }
-                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text("发送", color = Color.White, fontWeight = FontWeight.Bold)
                     }
+                }
 
-                    // 消息输入卡片
-                    GlassCard {
-                        Text(
-                            "消息",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = uiState.message,
-                            onValueChange = { viewModel.updateMessage(it) },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("输入要发送的消息...") },
-                            minLines = 3,
-                            maxLines = 8,
-                            shape = RoundedCornerShape(12.dp),
-                        )
-                    }
-
-                    // 发送按钮
-                    Button(
-                        onClick = { viewModel.sendMessage() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        enabled = !uiState.isSending
-                            && uiState.selectedPlatform != null
-                            && uiState.message.isNotBlank(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = PrimaryGradientColors[0],
-                        ),
+                // 数据统计
+                if (uiState.selects != null && uiState.selectedPlatform != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(8.dp),
                     ) {
-                        if (uiState.isSending) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("发送中...", color = Color.White)
-                        } else {
+                        Row(
+                            modifier = Modifier.padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Icon(
-                                Icons.AutoMirrored.Filled.Send,
+                                Icons.Filled.Info,
                                 null,
-                                modifier = Modifier.size(18.dp),
-                                tint = Color.White,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Spacer(Modifier.width(8.dp))
-                            Text("发送", color = Color.White, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "已筛选: ${if (uiState.isGroup) "${uiState.filteredGroups.size} 个群组" else "${uiState.filteredUsers.size} 个用户"}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
+                }
 
-                    // 数据统计
-                    if (uiState.selects != null && uiState.selectedPlatform != null) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(8.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
+                // 发送结果
+                if (uiState.lastResult != null) {
+                    val result = uiState.lastResult!!
+                    Surface(
+                        color = SuccessColor.copy(alpha = 0.08f),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    Icons.Filled.Info,
+                                    Icons.Filled.CheckCircle,
                                     null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = SuccessColor,
                                 )
                                 Spacer(Modifier.width(6.dp))
                                 Text(
-                                    "已筛选: ${if (uiState.isGroup) "${uiState.filteredGroups.size} 个群组" else "${uiState.filteredUsers.size} 个用户"}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    "发送成功",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SuccessColor,
                                 )
                             }
-                        }
-                    }
-
-                    // 发送结果
-                    if (uiState.lastResult != null) {
-                        val result = uiState.lastResult!!
-                        Surface(
-                            color = SuccessColor.copy(alpha = 0.08f),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Filled.CheckCircle,
-                                        null,
-                                        modifier = Modifier.size(16.dp),
-                                        tint = SuccessColor,
-                                    )
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(
-                                        "发送成功",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = SuccessColor,
-                                    )
-                                }
-                                Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "平台: ${result.platform}  ·  Bot: ${result.botId}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (result.userId.isNotBlank()) {
                                 Text(
-                                    "平台: ${result.platform}  ·  Bot: ${result.botId}",
+                                    "用户: ${result.userId}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                if (result.userId.isNotBlank()) {
-                                    Text(
-                                        "用户: ${result.userId}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                if (result.chatId.isNotBlank()) {
-                                    Text(
-                                        "群组: ${result.chatId}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
+                            }
+                            if (result.chatId.isNotBlank()) {
+                                Text(
+                                    "群组: ${result.chatId}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     }
-
-                    Spacer(Modifier.height(20.dp))
                 }
+
+                Spacer(Modifier.height(20.dp))
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DropdownSelector(
     label: String,
@@ -330,26 +317,36 @@ private fun DropdownSelector(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(4.dp))
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { if (enabled) expanded = !expanded },
-        ) {
-            OutlinedTextField(
-                value = displayText,
-                onValueChange = {},
-                readOnly = true,
-                enabled = enabled,
+        // 使用 Surface + DropdownMenu 替代 ExposedDropdownMenuBox
+        // 避免 ExposedDropdownMenu 内部 verticalScroll 与父级 verticalScroll 嵌套崩溃
+        Box {
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                    .clickable(enabled = enabled) { expanded = true },
                 shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                ),
-            )
-            ExposedDropdownMenu(
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = displayText,
+                        modifier = Modifier.weight(1f),
+                        color = if (selected != null) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Icon(
+                        Icons.Filled.ArrowDropDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
             ) {
@@ -367,7 +364,6 @@ private fun DropdownSelector(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchableDropdown(
     label: String,
@@ -431,7 +427,6 @@ private fun SearchableDropdown(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchDialog(
     title: String,
@@ -481,21 +476,17 @@ private fun SearchDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(8.dp))
-                // 选项列表
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 400.dp),
-                ) {
+                // 选项列表（使用 Column 而非 LazyColumn，避免与 AlertDialog 内部的 verticalScroll 嵌套崩溃）
+                Column(modifier = Modifier.heightIn(max = 400.dp)) {
                     // 清除选择选项
                     if (selected != null && selected.isNotBlank()) {
-                        item {
-                            DropdownMenuItem(
-                                text = { Text("清除选择", color = MaterialTheme.colorScheme.error) },
-                                onClick = { onSelected("") },
-                            )
-                        }
+                        DropdownMenuItem(
+                            text = { Text("清除选择", color = MaterialTheme.colorScheme.error) },
+                            onClick = { onSelected("") },
+                        )
                     }
                     // 选项
-                    items(filtered) { item ->
+                    for (item in filtered) {
                         DropdownMenuItem(
                             text = {
                                 Column {
@@ -518,13 +509,11 @@ private fun SearchDialog(
                     }
                     // 无匹配结果
                     if (filtered.isEmpty() && searchQuery.isNotBlank()) {
-                        item {
-                            DropdownMenuItem(
-                                text = { Text("未找到匹配项", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                onClick = {},
-                                enabled = false,
-                            )
-                        }
+                        DropdownMenuItem(
+                            text = { Text("未找到匹配项", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                            onClick = {},
+                            enabled = false,
+                        )
                     }
                 }
             }

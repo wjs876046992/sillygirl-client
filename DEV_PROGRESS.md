@@ -1,5 +1,43 @@
 # sillygirl-client 开发进展
 
+## 2026-06-26 第十七次会话完成的工作
+
+### 一、修复 Chat 页面闪退（3个问题）
+
+**问题描述：**
+1. Chat 页面打开即闪退
+2. 选择 platform 后再选 bot 也闪退
+3. Chat 页面顶部空白过多
+
+**根因分析：**
+
+所有闪退问题的根因相同：**可滚动组件嵌套冲突**。
+
+Material 3 的 `AlertDialog` 和 `ExposedDropdownMenu` 内部都会自动包裹 `verticalScroll`，而 Chat 页面的父级 `Column` 也使用了 `verticalScroll`。Compose 中可滚动组件不能嵌套在另一个可滚动容器中，否则会抛出：
+```
+IllegalStateException: Nesting scrollable components is not allowed
+```
+
+| 组件 | 内部滚动 | 嵌套位置 | 是否崩溃 |
+|------|----------|----------|----------|
+| `SearchDialog` 中的 `LazyColumn` | ✅ 自身可滚动 | `AlertDialog.text`（内部有 `verticalScroll`） | ✅ 崩溃 |
+| `DropdownSelector` 中的 `ExposedDropdownMenu` | ✅ 内部有 `verticalScroll` | 父级 `Column(verticalScroll)` | ✅ 崩溃 |
+
+**解决方案：**
+
+1. **SearchDialog**：`LazyColumn` → `Column`（已通过 `.take(50)` / `.take(30)` 限制数量，无需懒加载）
+
+2. **DropdownSelector**：`ExposedDropdownMenuBox` + `ExposedDropdownMenu` → `Surface(clickable)` + `DropdownMenu`（`DropdownMenu` 使用 `Popup` 渲染，不与父级滚动冲突）
+
+3. **顶部空白**：移除内层 `Column` 的 `top = 12.dp` padding
+
+**修改文件：**
+| 文件 | 修改内容 |
+|------|----------|
+| `ChatScreen.kt` | SearchDialog: LazyColumn → Column；DropdownSelector: ExposedDropdownMenuBox → Surface+DropdownMenu；移除顶部 padding；清理未使用 import 和 @OptIn |
+
+---
+
 ## 2026-06-25 第十五次会话完成的工作
 
 ### 一、新增发送消息功能
