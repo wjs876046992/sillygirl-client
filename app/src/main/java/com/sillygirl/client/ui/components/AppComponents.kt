@@ -331,13 +331,40 @@ fun BrandTopBar(
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
                         )
-                        if (!subtitle.isNullOrBlank()) {
+                        // 用户名和地址放同一行
+                        val hasSubtitle = !subtitle.isNullOrBlank()
+                        val hasUrl = !serverUrl.isNullOrBlank()
+                        if (hasSubtitle || hasUrl) {
                             Spacer(Modifier.height(2.dp))
-                            Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.7f),
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (hasSubtitle) {
+                                    Text(
+                                        text = subtitle!!,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.White.copy(alpha = 0.85f),
+                                    )
+                                }
+                                if (hasSubtitle && hasUrl) {
+                                    Text(
+                                        text = "  ·  ",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.White.copy(alpha = 0.5f),
+                                    )
+                                }
+                                if (hasUrl) {
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(6.dp),
+                                    ) {
+                                        Text(
+                                            text = serverUrl!!,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.8f),
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                     Row(
@@ -345,20 +372,6 @@ fun BrandTopBar(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         actions()
-                    }
-                }
-                if (!serverUrl.isNullOrBlank()) {
-                    Spacer(Modifier.height(8.dp))
-                    Surface(
-                        color = Color.White.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(8.dp),
-                    ) {
-                        Text(
-                            text = serverUrl,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.8f),
-                        )
                     }
                 }
             }

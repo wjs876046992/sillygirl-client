@@ -70,7 +70,7 @@ fun ChatScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp)),
+                    .padding(PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 12.dp)),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 // 目标选择卡片

@@ -344,17 +344,9 @@ fun AppNavGraph() {
                     }
                 }
                 val serverDisplayUrl = remember {
-                    val url = RetrofitClient.currentServerUrl() ?: ""
-                    // 截取 host:port 部分作为显示
-                    try {
-                        val javaUrl = java.net.URL(url)
-                        javaUrl.host?.let { host ->
-                            val port = if (javaUrl.port > 0 && javaUrl.port != 80 && javaUrl.port != 443) ":${javaUrl.port}" else ""
-                            "$host$port"
-                        } ?: url
-                    } catch (_: Exception) {
-                        url
-                    }
+                    val server = serverConfig.getDefaultServer()
+                    // 只显示备注(alias)，无备注则不显示，避免暴露服务器地址
+                    server?.alias?.takeIf { it.isNotBlank() } ?: ""
                 }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
