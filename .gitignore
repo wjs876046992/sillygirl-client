@@ -4,8 +4,10 @@ app/build/
 .idea/
 *.iml
 *.log
+*.apk
 local.properties
 .gradle/
+.kotlin/
 
 # OS
 .DS_Store
