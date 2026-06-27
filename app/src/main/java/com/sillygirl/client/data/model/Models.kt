@@ -468,6 +468,8 @@ data class PluginLogsResponse(
     val success: Boolean = false,
     val data: List<PluginLogEntry> = emptyList(),
     val total: Int = 0,
+    val page: Int = 1,
+    val pageSize: Int = 50,
 )
 
 /**

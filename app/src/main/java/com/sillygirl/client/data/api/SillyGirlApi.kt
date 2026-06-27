@@ -124,7 +124,8 @@ interface SillyGirlApi {
         @Query("uuid") uuid: String,
         @Query("level") level: String? = null,
         @Query("since") since: Long? = null,
-        @Query("limit") limit: Int = 100,
+        @Query("page") page: Int = 1,
+        @Query("pageSize") pageSize: Int = 50,
     ): PluginLogsResponse
 
     @GET("api/plugin/logs/stats")

@@ -2,19 +2,18 @@ package com.sillygirl.client.ui.screens.plugins
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -23,25 +22,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sillygirl.client.ui.components.GlassCard
 import com.sillygirl.client.ui.components.MiniAppBar
 import com.sillygirl.client.ui.theme.*
 
-/**
- * 日志级别颜色配置
- */
 private object LogLevelColors {
-    val Info = Color(0xFF1890FF)      // 蓝色
-    val Debug = Color(0xFF52C41A)     // 绿色
-    val Warn = Color(0xFFFAAD14)      // 橙色
-    val Error = Color(0xFFFF4D4F)     // 红色
-    val Log = Color(0xFF722ED1)       // 紫色
-    val Unknown = Color(0xFF8C8C8C)   // 灰色
+    val Info = Color(0xFF1890FF)
+    val Debug = Color(0xFF52C41A)
+    val Warn = Color(0xFFFAAD14)
+    val Error = Color(0xFFFF4D4F)
+    val Log = Color(0xFF722ED1)
+    val Unknown = Color(0xFF8C8C8C)
 }
 
-/**
- * 根据日志级别返回对应颜色
- */
 private fun getLevelColor(level: String): Color {
     return when (level.lowercase()) {
         "info" -> LogLevelColors.Info
@@ -53,9 +45,6 @@ private fun getLevelColor(level: String): Color {
     }
 }
 
-/**
- * 插件日志查看页面
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PluginLogsScreen(
@@ -68,7 +57,6 @@ fun PluginLogsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var searchQuery by remember { mutableStateOf("") }
 
-    // 日志级别选项
     val levelOptions = listOf(
         null to "全部",
         "info" to "Info",
@@ -78,10 +66,8 @@ fun PluginLogsScreen(
         "log" to "Log",
     )
 
-    // 初始加载
     LaunchedEffect(pluginUuid) {
         viewModel.loadLogs(pluginUuid)
-        viewModel.loadStats(pluginUuid)
     }
 
     LaunchedEffect(uiState.snackbarMessage) {
@@ -90,7 +76,6 @@ fun PluginLogsScreen(
         viewModel.clearSnackbar()
     }
 
-    // 客户端过滤后的日志
     val filteredLogs = remember(uiState.logs, searchQuery) {
         if (searchQuery.isBlank()) {
             uiState.logs
@@ -139,7 +124,8 @@ fun PluginLogsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
+                .verticalScroll(rememberScrollState()),
         ) {
             // 搜索栏
             OutlinedTextField(
@@ -161,7 +147,7 @@ fun PluginLogsScreen(
                 singleLine = true,
             )
 
-            // 日志级别筛选 chips
+            // 级别筛选 chips
             FlowRow(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -178,11 +164,7 @@ fun PluginLogsScreen(
                             Text(
                                 label,
                                 fontSize = 12.sp,
-                                color = if (isSelected) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    chipColor
-                                },
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else chipColor,
                             )
                         },
                         leadingIcon = if (isSelected) {
@@ -202,16 +184,21 @@ fun PluginLogsScreen(
                 }
             }
 
-            // 统计信息卡片
+            // 统计卡片
             uiState.stats?.let { stats ->
                 if (stats.total > 0) {
-                    GlassCard(
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 14.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 1.dp,
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                         ) {
                             StatItem("总计", stats.total.toString(), MaterialTheme.colorScheme.primary)
@@ -224,167 +211,124 @@ fun PluginLogsScreen(
                 }
             }
 
-            // 日志列表
-            when {
-                uiState.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
-                    }
+            // 加载中
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
                 }
-                uiState.error != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Filled.ErrorOutline,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.error,
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                uiState.error!!,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            OutlinedButton(onClick = { viewModel.refresh() }) {
-                                Text("重试")
-                            }
-                        }
-                    }
-                }
-                filteredLogs.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Article,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                if (searchQuery.isNotBlank()) "没有匹配的日志" else "暂无日志",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        items(filteredLogs, key = { "${it.unix}_${it.content.hashCode()}" }) { log ->
-                            LogEntryCard(log)
-                        }
+            }
+
+            // 错误
+            if (!uiState.isLoading && uiState.error != null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Filled.ErrorOutline, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(8.dp))
+                        Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedButton(onClick = { viewModel.refresh() }) { Text("重试") }
                     }
                 }
             }
+
+            // 空状态
+            if (!uiState.isLoading && uiState.error == null && filteredLogs.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.AutoMirrored.Filled.Article, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            if (searchQuery.isNotBlank()) "没有匹配的日志" else "暂无日志",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            // 日志列表 — 纯平铺，无嵌套
+            if (!uiState.isLoading && uiState.error == null && filteredLogs.isNotEmpty()) {
+                filteredLogs.forEach { log ->
+                    LogEntryCard(log)
+                }
+
+                // 分页导航
+                if (uiState.total > uiState.pageSize) {
+                    PaginationBar(
+                        currentPage = uiState.currentPage,
+                        totalPages = uiState.totalPages,
+                        total = uiState.total,
+                        hasPrev = uiState.hasPrevPage,
+                        hasNext = uiState.hasNextPage,
+                        onPrev = { viewModel.loadPage(uiState.currentPage - 1) },
+                        onNext = { viewModel.loadPage(uiState.currentPage + 1) },
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
-/**
- * 统计项组件
- */
 @Composable
 private fun StatItem(label: String, value: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = color,
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
-/**
- * 单条日志卡片
- */
 @Composable
 private fun LogEntryCard(log: com.sillygirl.client.data.model.PluginLogEntry) {
     val levelColor = getLevelColor(log.level)
 
-    GlassCard {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 3.dp)
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(10.dp))
+            .padding(10.dp),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            // 日志级别标签
-            Surface(
-                shape = RoundedCornerShape(4.dp),
-                color = levelColor.copy(alpha = 0.15f),
-                modifier = Modifier.padding(top = 2.dp),
+            Box(
+                modifier = Modifier
+                    .background(levelColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                    .padding(top = 1.dp),
             ) {
-                Text(
-                    log.level.uppercase(),
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = levelColor,
-                    fontSize = 10.sp,
-                )
+                Text(log.level.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = levelColor, fontSize = 10.sp)
             }
 
-            // 日志内容
             Column(modifier = Modifier.weight(1f)) {
-                // 内容
                 Text(
                     log.content,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                    ),
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 10,
                     overflow = TextOverflow.Ellipsis,
                 )
-
-                Spacer(Modifier.height(4.dp))
-
-                // 底部信息：时间 + 版本
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // 时间
-                    Text(
-                        formatLogTime(log.unix),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 10.sp,
-                    )
-
-                    // 版本标签
+                Spacer(Modifier.height(3.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(formatLogTime(log.unix), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                     if (log.version.isNotBlank()) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                        ) {
-                            Text(
-                                log.version,
-                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontSize = 9.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                        Text(
+                            log.version,
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 1.dp),
+                            style = MaterialTheme.typography.labelSmall, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -392,20 +336,80 @@ private fun LogEntryCard(log: com.sillygirl.client.data.model.PluginLogEntry) {
     }
 }
 
-/**
- * 格式化日志时间戳
- */
+@Composable
+private fun PaginationBar(
+    currentPage: Int,
+    totalPages: Int,
+    total: Int,
+    hasPrev: Boolean,
+    hasNext: Boolean,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "共 $total 条",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilledTonalButton(
+                    onClick = onPrev,
+                    enabled = hasPrev,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(2.dp))
+                    Text("上一页", fontSize = 12.sp)
+                }
+
+                Text(
+                    "$currentPage / $totalPages",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+
+                FilledTonalButton(
+                    onClick = onNext,
+                    enabled = hasNext,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                ) {
+                    Text("下一页", fontSize = 12.sp)
+                    Spacer(Modifier.width(2.dp))
+                    Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(16.dp))
+                }
+            }
+        }
+    }
+}
+
 private fun formatLogTime(unix: Long): String {
     if (unix <= 0) return ""
     val cal = java.util.Calendar.getInstance()
     cal.timeInMillis = unix * 1000
     val now = java.util.Calendar.getInstance()
-
     val hour = cal.get(java.util.Calendar.HOUR_OF_DAY).toString().padStart(2, '0')
     val minute = cal.get(java.util.Calendar.MINUTE).toString().padStart(2, '0')
     val second = cal.get(java.util.Calendar.SECOND).toString().padStart(2, '0')
     val time = "$hour:$minute:$second"
-
     return when {
         cal.get(java.util.Calendar.YEAR) == now.get(java.util.Calendar.YEAR) &&
             cal.get(java.util.Calendar.DAY_OF_YEAR) == now.get(java.util.Calendar.DAY_OF_YEAR) -> "今天 $time"
