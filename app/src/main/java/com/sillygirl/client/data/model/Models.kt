@@ -446,3 +446,44 @@ data class SendMessageData(
     @SerializedName("chat_id") val chatId: String = "",
     @SerializedName("message_id") val messageId: String = "",
 )
+
+// ===== Plugin Logs =====
+
+/**
+ * 插件日志条目
+ */
+data class PluginLogEntry(
+    val uuid: String = "",
+    val level: String = "",
+    val content: String = "",
+    val unix: Long = 0,
+    val version: String = "",
+    @SerializedName("plugin_name") val pluginName: String = "",
+)
+
+/**
+ * 插件日志 API 返回（/api/plugin/logs）
+ */
+data class PluginLogsResponse(
+    val success: Boolean = false,
+    val data: List<PluginLogEntry> = emptyList(),
+    val total: Int = 0,
+)
+
+/**
+ * 插件日志统计
+ */
+data class PluginLogStats(
+    val total: Int = 0,
+    @SerializedName("by_level") val byLevel: Map<String, Int> = emptyMap(),
+    @SerializedName("oldest_time") val oldestTime: Long = 0,
+    @SerializedName("newest_time") val newestTime: Long = 0,
+)
+
+/**
+ * 插件日志统计 API 返回（/api/plugin/logs/stats）
+ */
+data class PluginLogStatsResponse(
+    val success: Boolean = false,
+    val data: PluginLogStats? = null,
+)

@@ -117,4 +117,18 @@ interface SillyGirlApi {
     @POST("api/send")
     @Headers("Content-Type: application/json")
     suspend fun sendMessage(@Body body: SendMessageRequest): SendMessageResponse
+
+    // ===== Plugin Logs =====
+    @GET("api/plugin/logs")
+    suspend fun getPluginLogs(
+        @Query("uuid") uuid: String,
+        @Query("level") level: String? = null,
+        @Query("since") since: Long? = null,
+        @Query("limit") limit: Int = 100,
+    ): PluginLogsResponse
+
+    @GET("api/plugin/logs/stats")
+    suspend fun getPluginLogStats(
+        @Query("uuid") uuid: String,
+    ): PluginLogStatsResponse
 }

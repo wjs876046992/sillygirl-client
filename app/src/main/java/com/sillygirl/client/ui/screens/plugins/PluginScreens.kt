@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.*
@@ -46,6 +47,7 @@ import com.sillygirl.client.ui.components.MiniAppBar
 fun MyPluginsScreen(
     onBack: () -> Unit,
     onPluginClick: (PluginRoute) -> Unit,
+    onViewLogs: (PluginRoute) -> Unit = {},
     onRefreshCurrentUser: () -> Unit = {},
     viewModel: MyPluginsViewModel = viewModel(),
 ) {
@@ -240,6 +242,7 @@ fun MyPluginsScreen(
                                 MyPluginCard(
                                     plugin = plugin,
                                     onClick = { onPluginClick(plugin) },
+                                    onViewLogs = { onViewLogs(plugin) },
                                     onReload = { showReloadDialog = plugin },
                                     onUninstall = { showUninstallDialog = plugin },
                                 )
@@ -276,6 +279,7 @@ fun MyPluginsScreen(
 fun PluginMarketScreen(
     onBack: () -> Unit,
     onPluginClick: (PluginRoute) -> Unit = {},
+    onViewLogs: (PluginRoute) -> Unit = {},
     onRefreshCurrentUser: () -> Unit = {},
     viewModel: PluginMarketViewModel = viewModel(),
 ) {
@@ -448,6 +452,9 @@ fun PluginMarketScreen(
                                     onConfigForm = {
                                         installedPlugin?.let { onPluginClick(it) }
                                     },
+                                    onViewLogs = {
+                                        installedPlugin?.let { onViewLogs(it) }
+                                    },
                                     onShowMessages = { viewModel.showMessagesDialog(plugin) },
                                 )
                             }
@@ -482,6 +489,7 @@ fun PluginMarketScreen(
 private fun MyPluginCard(
     plugin: PluginRoute,
     onClick: () -> Unit,
+    onViewLogs: (() -> Unit)? = null,
     onReload: (() -> Unit)? = null,
     onUninstall: (() -> Unit)? = null,
 ) {
@@ -598,14 +606,30 @@ private fun MyPluginCard(
                     }
                 }
 
-                // 操作按钮行（重载、卸载）
-                if (onReload != null || onUninstall != null) {
+                // 操作按钮行（查看日志、重载、卸载）
+                if (onViewLogs != null || onReload != null || onUninstall != null) {
                     Spacer(Modifier.height(8.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
                     Spacer(Modifier.height(8.dp))
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        if (onViewLogs != null) {
+                            AssistChip(
+                                onClick = onViewLogs,
+                                label = { Text("日志", fontSize = 10.sp) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Article,
+                                        null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.height(28.dp),
+                            )
+                        }
                         if (onReload != null) {
                             AssistChip(
                                 onClick = onReload,
@@ -683,6 +707,7 @@ private fun MarketPluginCard(
     onToggleDisable: (Boolean) -> Unit,
     onToggleRunning: (Boolean) -> Unit,
     onConfigForm: () -> Unit = {},
+    onViewLogs: () -> Unit = {},
     onShowMessages: () -> Unit = {},
 ) {
     val isInstalled = installedPlugin != null
@@ -878,6 +903,22 @@ private fun MarketPluginCard(
                                     null,
                                     modifier = Modifier.size(14.dp),
                                     tint = if (installedPlugin.disable) DangerColor else SuccessColor,
+                                )
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.height(28.dp),
+                        )
+
+                        // 查看日志按钮
+                        AssistChip(
+                            onClick = onViewLogs,
+                            label = { Text("日志", fontSize = 10.sp) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Article,
+                                    null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
                                 )
                             },
                             shape = RoundedCornerShape(8.dp),

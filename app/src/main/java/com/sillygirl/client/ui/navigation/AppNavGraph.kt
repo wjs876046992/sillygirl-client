@@ -29,6 +29,7 @@ import com.sillygirl.client.ui.screens.settings.SettingsScreen
 import com.sillygirl.client.ui.screens.plugins.MyPluginsScreen
 import com.sillygirl.client.ui.screens.plugins.PluginMarketScreen
 import com.sillygirl.client.ui.screens.plugins.PluginDetailScreen
+import com.sillygirl.client.ui.screens.plugins.PluginLogsScreen
 import com.sillygirl.client.ui.screens.masters.MastersScreen
 import com.sillygirl.client.ui.screens.tasks.TasksScreen
 import com.sillygirl.client.ui.screens.service.ServiceScreen
@@ -59,6 +60,7 @@ object Routes {
     const val SERVICE = "service"
     const val STORAGE = "storage"
     const val CHAT = "chat"
+    const val PLUGIN_LOGS = "plugin_logs/{pluginUuid}/{pluginTitle}"
     const val AUTO_LOGIN = "auto_login" // 自动登录加载页
 }
 
@@ -408,6 +410,11 @@ fun AppNavGraph() {
                         val uuid = plugin.path.removePrefix("/script/")
                         navController.navigate("plugin_detail/$uuid")
                     },
+                    onViewLogs = { plugin ->
+                        val uuid = plugin.path.removePrefix("/script/")
+                        val title = java.net.URLEncoder.encode(plugin.title.ifBlank { plugin.name }, "UTF-8")
+                        navController.navigate("plugin_logs/$uuid/$title")
+                    },
                     onRefreshCurrentUser = refreshCurrentUser,
                 )
             }
@@ -417,6 +424,11 @@ fun AppNavGraph() {
                     onPluginClick = { plugin ->
                         val uuid = plugin.path.removePrefix("/script/")
                         navController.navigate("plugin_detail/$uuid")
+                    },
+                    onViewLogs = { plugin ->
+                        val uuid = plugin.path.removePrefix("/script/")
+                        val title = java.net.URLEncoder.encode(plugin.title.ifBlank { plugin.name }, "UTF-8")
+                        navController.navigate("plugin_logs/$uuid/$title")
                     },
                     onRefreshCurrentUser = refreshCurrentUser,
                 )
@@ -435,6 +447,22 @@ fun AppNavGraph() {
                         },
                     )
                 }
+            }
+
+            composable(
+                route = Routes.PLUGIN_LOGS,
+                arguments = listOf(
+                    navArgument("pluginUuid") { type = NavType.StringType },
+                    navArgument("pluginTitle") { type = NavType.StringType },
+                )
+            ) { backStackEntry ->
+                val pluginUuid = backStackEntry.arguments?.getString("pluginUuid") ?: ""
+                val pluginTitle = backStackEntry.arguments?.getString("pluginTitle") ?: ""
+                PluginLogsScreen(
+                    pluginUuid = pluginUuid,
+                    pluginTitle = pluginTitle,
+                    onBack = { navController.popBackStack() },
+                )
             }
 
             composable(Routes.MASTERS) {
