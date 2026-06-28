@@ -1,5 +1,8 @@
 package com.sillygirl.client.ui.screens.plugins
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -290,6 +294,10 @@ private fun StatItem(label: String, value: String, color: Color) {
 @Composable
 private fun LogEntryCard(log: com.sillygirl.client.data.model.PluginLogEntry) {
     val levelColor = getLevelColor(log.level)
+    var isExpanded by remember { mutableStateOf(false) }
+    val shouldTruncate = log.content.lines().size > 10 || log.content.length > 500
+    val context = LocalContext.current
+    var showCopied by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -317,11 +325,35 @@ private fun LogEntryCard(log: com.sillygirl.client.data.model.PluginLogEntry) {
                     log.content,
                     style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 10,
+                    maxLines = if (isExpanded) Int.MAX_VALUE else 10,
                     overflow = TextOverflow.Ellipsis,
                 )
+
+                if (shouldTruncate) {
+                    Spacer(Modifier.height(4.dp))
+                    TextButton(
+                        onClick = { isExpanded = !isExpanded },
+                        modifier = Modifier.padding(0.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    ) {
+                        Icon(
+                            if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            if (isExpanded) "收起" else "点击展开全部",
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
+
                 Spacer(Modifier.height(3.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(formatLogTime(log.unix), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                     if (log.version.isNotBlank()) {
                         Text(
@@ -332,6 +364,32 @@ private fun LogEntryCard(log: com.sillygirl.client.data.model.PluginLogEntry) {
                     }
                 }
             }
+
+            // 复制按钮
+            IconButton(
+                onClick = {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = ClipData.newPlainText("log", log.content)
+                    clipboard.setPrimaryClip(clip)
+                    showCopied = true
+                },
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    if (showCopied) Icons.Filled.Check else Icons.Filled.ContentCopy,
+                    contentDescription = "复制",
+                    modifier = Modifier.size(16.dp),
+                    tint = if (showCopied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+
+    // 复制成功提示自动消失
+    if (showCopied) {
+        LaunchedEffect(Unit) {
+            kotlinx.coroutines.delay(1500)
+            showCopied = false
         }
     }
 }
